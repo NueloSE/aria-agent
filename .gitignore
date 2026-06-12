@@ -1,0 +1,48 @@
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local-only working notes
+CLAUDE.md
+.claude/
+
+# Third-party clone (has its own .git; clone it yourself — see docs/vendor/README.md)
+docs/vendor/bnb-ai-agent-sdk/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / dashboard
+node_modules/
+dist/
+.next/
+
+# Local data
+*.sqlite
+*.sqlite3
+*.db
+.agent-data/
+logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Never commit credential screenshots
+password.png
+*.password.*
+
+# Internal working docs — not for the repo
+docs/vendor/
+docs/BUILD_PLAN.md

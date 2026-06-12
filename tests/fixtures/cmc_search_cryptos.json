@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"id\":1839,\"name\":\"BNB\",\"symbol\":\"BNB\",\"slug\":\"bnb\",\"rank\":4}]"
+      }
+    ],
+    "isError": false
+  }
+}
