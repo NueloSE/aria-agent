@@ -34,12 +34,18 @@ def _mock_decide(snapshot: MarketSnapshot, portfolio: PortfolioState) -> Decisio
             reasoning=f"mock brain: F&G={fg} ({snapshot.fear_greed_label}) -> preservation",
         )
     if fg >= 60:
+        # Propose a buy with no token preference — the narrative-rotation gates
+        # pick the concrete token (and can still reject the whole idea).
         return Decision(
             regime="trending",
             mode="narrative_rotation",
-            action="hold",  # strategies propose actual entries from Stage 5
-            confidence=0.7,
-            reasoning=f"mock brain: F&G={fg} -> trending; entry proposals land in Stage 5",
+            action="buy",
+            token_symbol=None,
+            size_pct=10.0,
+            stop_loss_pct=6.0,
+            confidence=0.72,
+            reasoning=f"mock brain: F&G={fg} ({snapshot.fear_greed_label}) -> trending; "
+                      "delegating token selection to narrative gates",
         )
     return Decision(
         regime="ranging",

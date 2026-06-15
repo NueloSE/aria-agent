@@ -29,13 +29,23 @@ BRAIN_MODEL = os.getenv("BRAIN_MODEL", "claude-haiku-4-5")
 # --- Chain / execution ---
 # TWAK has no testnet (probed 2026-06-12). Real swaps require ALL THREE:
 # EXECUTION_MODE=live AND NETWORK=mainnet AND not --dry-run.
+#   stub  = skip fills (offline dev / dry-run soak)
+#   paper = simulate fills at market price + simulated cost (no funds, no chain)
+#   live  = real swaps via twak serve
 NETWORK = os.getenv("NETWORK", "testnet")
-EXECUTION_MODE = os.getenv("EXECUTION_MODE", "stub")   # stub | live (live = twak serve)
+EXECUTION_MODE = os.getenv("EXECUTION_MODE", "stub")   # stub | paper | live
 CHAIN = "bsc"
 BSC_RPC_URL = os.getenv("BSC_RPC_URL", "https://bsc-dataseed.bnbchain.org")
 AGENT_WALLET = "0xA935c0bE3b42385B6Cf7059979c7902AD4929B9B"
 SLIPPAGE_PCT = _env_float("SLIPPAGE_PCT", 1.0)          # twak default; max 50
 MAX_PRICE_IMPACT_PCT = _env_float("MAX_PRICE_IMPACT_PCT", 3.0)  # abort swap above this
+
+# --- Paper trading (forward simulation; no funds, no chain) ---
+PAPER_START_USD = _env_float("PAPER_START_USD", 100.0)
+# The competition applies SIMULATED costs at market price (admins: don't calibrate
+# to live TWAK quotes). Mirror that: cost per leg. ~0.75%/leg ≈ 1.5% round trip —
+# a placeholder until organizers publish the official model. One env var to retune.
+SIM_COST_PCT_PER_LEG = _env_float("SIM_COST_PCT_PER_LEG", 0.75)
 
 # --- Loop ---
 CYCLE_INTERVAL_MIN = _env_float("CYCLE_INTERVAL_MIN", 30.0)

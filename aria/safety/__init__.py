@@ -39,8 +39,12 @@ def halt_reason(store: Store) -> str:
 
 
 def trigger_halt(store: Store, reason: str) -> None:
+    from aria import alerts  # local import — avoids a cycle at module load
+
     log.critical("HALT TRIGGERED: %s — manual restart required (--clear-halt)", reason)
     store.set_state(HALT_KEY, f"{datetime.now(timezone.utc).isoformat()} {reason}")
+    alerts.send_sync(f"🛑 CIRCUIT BREAKER: {reason}\nAll positions closing; trading halted "
+                     f"until you run --clear-halt (or the dashboard button).")
 
 
 def clear_halt(store: Store) -> None:

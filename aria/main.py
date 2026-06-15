@@ -22,9 +22,9 @@ log = logging.getLogger("aria")
 
 
 async def load_portfolio(store: Store, snapshot=None) -> PortfolioState:
-    """EXECUTION_MODE=live: reconcile against on-chain holdings via twak (never
-    trust stale local state), pricing positions from the snapshot's quotes.
-    Otherwise: synthetic flat portfolio for offline development."""
+    """live: reconcile against on-chain holdings via twak (never trust stale
+    local state). paper: mark the simulated book to the accumulated prices.
+    stub: synthetic flat portfolio for offline development."""
     if config.EXECUTION_MODE == "live":
         prices: dict[str, float] = {}
         if snapshot is not None:
@@ -33,6 +33,9 @@ async def load_portfolio(store: Store, snapshot=None) -> PortfolioState:
                 if isinstance(price, (int, float)):
                     prices[sym] = float(price)
         return await execution.reconcile_portfolio(store, prices)
+    if config.EXECUTION_MODE == "paper":
+        from aria.execution import paper
+        return paper.load_state(store)
     now = datetime.now(timezone.utc)
     return PortfolioState(
         timestamp=now,
@@ -81,6 +84,9 @@ async def run_cycle(store: Store, dry_run: bool, signal_failures: int = 0) -> in
         log.error("signal fetch failed (%d consecutive): %s", signal_failures, exc)
         portfolio = await load_portfolio(store)
         if signal_failures >= config.SIGNAL_MAX_CONSECUTIVE_FAILURES:
+            from aria import alerts
+            await alerts.send(f"⚠️ {signal_failures} consecutive signal failures — "
+                              "forcing preservation (close to stables) until signals return")
             # DESIGN.md policy: blind agent goes to stables until signals return
             decision = Decision(
                 regime="high_risk", mode="preservation", action="close_all",
@@ -97,7 +103,10 @@ async def run_cycle(store: Store, dry_run: bool, signal_failures: int = 0) -> in
         await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
         return signal_failures
 
-    # 1b. Portfolio — on-chain truth (live) or stub (dev), priced from the snapshot
+    # 1a. Accumulate the price series (CMC sells no history — we build our own)
+    store.record_prices(snapshot.token_quotes)
+
+    # 1b. Portfolio — on-chain truth (live), paper book, or stub — priced from snapshot
     portfolio = await load_portfolio(store, snapshot)
 
     # 1c. Competition window / operator override — outside it, observe but never trade
@@ -140,6 +149,10 @@ async def run_cycle(store: Store, dry_run: bool, signal_failures: int = 0) -> in
     except Exception as exc:  # noqa: BLE001
         log.error("strategy refinement failed: %s", exc)
         decision = hold_decision(f"strategy refinement failed: {exc}", regime=decision.regime)
+
+    # refinement may have enriched the snapshot with candidate prices — capture them
+    # so a paper/live buy can price its chosen token from this cycle's data
+    store.record_prices(snapshot.token_quotes)
 
     # 3. Validate — safety has veto power over everything
     try:

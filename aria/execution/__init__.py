@@ -98,6 +98,9 @@ async def _swap(store: Store, cycle_id: str, kind: str,
             break
         except TwakError as exc:
             if attempts >= 2:  # max ONE retry
+                from aria import alerts
+                await alerts.send(f"❌ swap FAILED after retry: {from_token}->{to_token} "
+                                  f"{amount}: {str(exc)[:200]}")
                 store.log_trade(cycle_id, kind, from_token, to_token,
                                 status="failed", from_amount=amount)
                 return ExecutionResult("failed", f"swap error after retry: {exc}")
@@ -121,6 +124,9 @@ async def execute(decision: Decision, portfolio: PortfolioState, store: Store,
                   dry_run: bool = True) -> ExecutionResult:
     if decision.action == "hold":
         return ExecutionResult("skipped", "hold")
+    if config.EXECUTION_MODE == "paper":
+        from aria.execution import paper
+        return paper.simulate(store, decision, portfolio.total_value_usd)
     if dry_run or not _live():
         return ExecutionResult(
             "skipped", f"dry_run={dry_run} mode={config.EXECUTION_MODE} net={config.NETWORK}"
@@ -157,6 +163,9 @@ async def compliance_roundtrip(amount_usd: float, store: Store, cycle_id: str,
                                dry_run: bool = True) -> ExecutionResult:
     """USDT->ETH->USDT heartbeat (competition daily-trade rule). Small,
     directionless, allowed even while halted."""
+    if config.EXECUTION_MODE == "paper":
+        from aria.execution import paper
+        return paper.compliance_roundtrip(store, cycle_id, amount_usd)
     if dry_run or not _live():
         return ExecutionResult("skipped", f"dry_run heartbeat ${amount_usd:.2f}")
     leg1 = await _swap(store, cycle_id, "compliance", "USDT", "ETH", f"{amount_usd:.2f}")

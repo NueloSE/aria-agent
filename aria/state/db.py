@@ -44,6 +44,30 @@ CREATE TABLE IF NOT EXISTS agent_state (
     value           TEXT NOT NULL,
     updated_at      TEXT NOT NULL
 );
+-- Accumulated price series — CMC free tier sells no OHLCV history, so we BUILD
+-- it: append each cycle's quotes. Over time this is a real price record.
+CREATE TABLE IF NOT EXISTS price_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp       TEXT NOT NULL,
+    symbol          TEXT NOT NULL,
+    price_usd       REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_price_symbol_ts ON price_history(symbol, id);
+-- Paper-trading book: one row of cash + a positions table. Mirrors the on-chain
+-- portfolio shape so the same safety/breaker logic runs on simulated PnL.
+CREATE TABLE IF NOT EXISTS paper_book (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    stable_usd      REAL NOT NULL,
+    peak_value_usd  REAL NOT NULL,
+    started_at      TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS paper_positions (
+    symbol          TEXT PRIMARY KEY,
+    amount          REAL NOT NULL,
+    entry_price_usd REAL NOT NULL,
+    stop_loss_pct   REAL,
+    opened_at       TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS portfolio_snapshots (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp       TEXT NOT NULL,
@@ -59,6 +83,9 @@ CREATE TABLE IF NOT EXISTS portfolio_snapshots (
 class Store:
     def __init__(self, path: Path):
         self.conn = sqlite3.connect(path)
+        # WAL: the agent loop writes while the dashboard API reads concurrently
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.executescript(SCHEMA)
         self.conn.commit()
 
@@ -150,6 +177,81 @@ class Store:
 
     def clear_state(self, key: str) -> None:
         self.conn.execute("DELETE FROM agent_state WHERE key = ?", (key,))
+        self.conn.commit()
+
+    # --- Price accumulation -------------------------------------------------
+
+    def record_prices(self, quotes: dict, ts: Optional[str] = None) -> None:
+        """Append this cycle's token prices to the accumulated series."""
+        from datetime import datetime, timezone
+        ts = ts or datetime.now(timezone.utc).isoformat()
+        rows = []
+        for sym, q in quotes.items():
+            price = q.get("price") if isinstance(q, dict) else None
+            if isinstance(price, (int, float)) and price > 0:
+                rows.append((ts, str(sym).upper(), float(price)))
+        if rows:
+            self.conn.executemany(
+                "INSERT INTO price_history (timestamp, symbol, price_usd) VALUES (?,?,?)",
+                rows,
+            )
+            self.conn.commit()
+
+    def latest_prices(self) -> dict[str, float]:
+        """Most recent price per symbol from the accumulated series."""
+        rows = self.conn.execute(
+            "SELECT symbol, price_usd FROM price_history"
+            " WHERE id IN (SELECT MAX(id) FROM price_history GROUP BY symbol)"
+        ).fetchall()
+        return {r[0]: r[1] for r in rows}
+
+    # --- Paper book ---------------------------------------------------------
+
+    def paper_book(self) -> Optional[dict]:
+        row = self.conn.execute(
+            "SELECT stable_usd, peak_value_usd, started_at FROM paper_book WHERE id = 1"
+        ).fetchone()
+        if not row:
+            return None
+        return {"stable_usd": row[0], "peak_value_usd": row[1], "started_at": row[2]}
+
+    def paper_book_init(self, stable_usd: float) -> None:
+        from datetime import datetime, timezone
+        self.conn.execute(
+            "INSERT OR IGNORE INTO paper_book (id, stable_usd, peak_value_usd, started_at)"
+            " VALUES (1, ?, ?, ?)",
+            (stable_usd, stable_usd, datetime.now(timezone.utc).isoformat()),
+        )
+        self.conn.commit()
+
+    def paper_book_update(self, stable_usd: float, peak_value_usd: float) -> None:
+        self.conn.execute(
+            "UPDATE paper_book SET stable_usd = ?, peak_value_usd = ? WHERE id = 1",
+            (stable_usd, peak_value_usd),
+        )
+        self.conn.commit()
+
+    def paper_positions(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT symbol, amount, entry_price_usd, stop_loss_pct, opened_at"
+            " FROM paper_positions"
+        ).fetchall()
+        keys = ("symbol", "amount", "entry_price_usd", "stop_loss_pct", "opened_at")
+        return [dict(zip(keys, r)) for r in rows]
+
+    def paper_position_set(self, symbol: str, amount: float, entry_price_usd: float,
+                           stop_loss_pct: Optional[float], opened_at: str) -> None:
+        self.conn.execute(
+            "INSERT INTO paper_positions (symbol, amount, entry_price_usd, stop_loss_pct,"
+            " opened_at) VALUES (?,?,?,?,?)"
+            " ON CONFLICT(symbol) DO UPDATE SET amount=excluded.amount,"
+            " entry_price_usd=excluded.entry_price_usd, stop_loss_pct=excluded.stop_loss_pct",
+            (symbol, amount, entry_price_usd, stop_loss_pct, opened_at),
+        )
+        self.conn.commit()
+
+    def paper_position_delete(self, symbol: str) -> None:
+        self.conn.execute("DELETE FROM paper_positions WHERE symbol = ?", (symbol,))
         self.conn.commit()
 
     def trades_today_utc(self, kinds: tuple[str, ...] = ("strategy", "compliance")) -> int:

@@ -1,0 +1,1556 @@
+{
+  "_meta": {
+    "generated_by": "scripts/resolve_addresses.py (CMC REST, 2026-06-12)",
+    "note": "Execution must prefer bsc_address over symbol for swaps. null bsc_address = treat as untradeable until manually verified.",
+    "resolved": 147,
+    "total": 148,
+    "problems": [
+      "ADA: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 16 (Cardano)",
+      "APE: AMBIGUOUS — 7 BSC tokens share the symbol; picked rank 157 (ApeCoin)",
+      "ASTER: AMBIGUOUS — 4 BSC tokens share the symbol; picked rank 41 (Aster)",
+      "AXL: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 397 (Axelar)",
+      "BabyDoge: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 343 (Baby Doge Coin)",
+      "BAS: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 268 (BNB Attestation Service)",
+      "BAT: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 153 (Basic Attention Token)",
+      "BEAT: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 27 (Audiera)",
+      "BILL: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 225 (Billions Network)",
+      "BONK: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 92 (Bonk)",
+      "BTT: AMBIGUOUS — 4 BSC tokens share the symbol; picked rank 112 (BitTorrent [New])",
+      "CAKE: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 83 (PancakeSwap)",
+      "COAI: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 327 (ChainOpera AI)",
+      "DAI: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 18 (Dai)",
+      "DOGE: AMBIGUOUS — 10 BSC tokens share the symbol; picked rank 10 (Dogecoin)",
+      "DUCKY: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 217 (Ducky)",
+      "DUSD: AMBIGUOUS — 4 BSC tokens share the symbol; picked rank 255 (StandX DUSD)",
+      "DUSK: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 434 (Dusk)",
+      "ELF: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 394 (aelf)",
+      "FF: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 126 (Falcon Finance)",
+      "FLOKI: AMBIGUOUS — 6 BSC tokens share the symbol; picked rank 119 (FLOKI)",
+      "FORM: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 192 (Four)",
+      "FRAX: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 218 (Legacy Frax Dollar)",
+      "GENIUS: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 149 (Genius Terminal)",
+      "HOME: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 170 (Defi App)",
+      "KITE: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 98 (Kite)",
+      "LINK: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 17 (Chainlink)",
+      "LUNC: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 91 (Terra Classic)",
+      "M: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 23 (MemeCore)",
+      "NEX: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 136 (Nexus)",
+      "NFT: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 111 (AINFT)",
+      "OPEN: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 316 (OpenLedger)",
+      "REAL: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 270 (RealLink)",
+      "SHIB: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 28 (Shiba Inu)",
+      "SLX: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 452 (Solstice)",
+      "SNX: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 198 (Synthetix)",
+      "SOON: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 184 (SOON)",
+      "STG: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 89 (Stargate Finance)",
+      "TAC: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 280 (TAC Protocol)",
+      "TAG: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 174 (Tagger)",
+      "TON: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 19 (Toncoin)",
+      "TOSHI: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 381 (Toshi)",
+      "TUSD: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 81 (TrueUSD)",
+      "TWT: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 140 (Trust Wallet Token)",
+      "U: AMBIGUOUS — 4 BSC tokens share the symbol; picked rank 55 (United Stables)",
+      "UB: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 216 (Unibase)",
+      "UNI: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 45 (Uniswap)",
+      "USD1: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 21 (World Liberty Financial USD)",
+      "USDe: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 20 (Ethena USDe)",
+      "USDf: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 205 (Falcon USD)",
+      "USDF: AMBIGUOUS — 3 BSC tokens share the symbol; picked rank 205 (Falcon USD)",
+      "USDT: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 3 (Tether USDt)",
+      "WLFI: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 37 (World Liberty Financial)",
+      "XPL: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 143 (Plasma)",
+      "XRP: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 6 (XRP)",
+      "XUSD: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 443 (StraitsX USD)",
+      "ZEC: AMBIGUOUS — 2 BSC tokens share the symbol; picked rank 12 (Zcash)",
+      "币安人生: no BSC contract found (0 CMC matches)"
+    ]
+  },
+  "tokens": {
+    "0G": {
+      "cmc_id": 38337,
+      "name": "0G",
+      "rank": 334,
+      "bsc_address": "0x4B948d64dE1F71fCd12fB586f4c776421a35b3eE"
+    },
+    "1INCH": {
+      "cmc_id": 8104,
+      "name": "1inch",
+      "rank": 178,
+      "bsc_address": "0x111111111117dc0aa78b770fa6a738034120c302"
+    },
+    "AAVE": {
+      "cmc_id": 7278,
+      "name": "Aave",
+      "rank": 56,
+      "bsc_address": "0xfb6115445bff7b52feb98650c87f44907e58f802"
+    },
+    "AB": {
+      "cmc_id": 3871,
+      "name": "AB",
+      "rank": 173,
+      "bsc_address": "0x95034f653d5d161890836ad2b6b8cc49d14e029a"
+    },
+    "ACH": {
+      "cmc_id": 6958,
+      "name": "Alchemy Pay",
+      "rank": 375,
+      "bsc_address": "0xBc7d6B50616989655AfD682fb42743507003056D"
+    },
+    "ADA": {
+      "cmc_id": 2010,
+      "name": "Cardano",
+      "rank": 16,
+      "bsc_address": "0x3ee2200efb3400fabb9aacf31297cbdd1d435d47",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 38229,
+          "name": "Cardano Inu",
+          "rank": 7631,
+          "bsc_address": "0x7f9A1A5C15125940895307A7E567301E51b3b612"
+        }
+      ]
+    },
+    "AIOZ": {
+      "cmc_id": 9104,
+      "name": "AIOZ Network",
+      "rank": 304,
+      "bsc_address": "0x33d08D8C7a168333a85285a68C0042b39fC3741D"
+    },
+    "ALE": {
+      "cmc_id": 30605,
+      "name": "Ailey",
+      "rank": 244,
+      "bsc_address": "0x9dCE13E71B11eb5Df66ca269bD657696587Fd4E2"
+    },
+    "APE": {
+      "cmc_id": 18876,
+      "name": "ApeCoin",
+      "rank": 157,
+      "bsc_address": "0x8f86a15EC17cb3369d8b3E666dAdBC11daA82b79",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 7257,
+          "name": "APEcoin.dev",
+          "rank": 4530,
+          "bsc_address": "0xa9ea4b786ee5b7a733c035564bfd9341a4c9fc1e"
+        },
+        {
+          "cmc_id": 8848,
+          "name": "Apestrong finance",
+          "rank": null,
+          "bsc_address": "0xbfd905c84dd6e408f17a7e18f7fbc5864c935a31"
+        },
+        {
+          "cmc_id": 9497,
+          "name": "Wall Street Apes",
+          "rank": null,
+          "bsc_address": "0x82bbd3dbae09eba3f3b1ea48d0a469140ed9dfb5"
+        }
+      ]
+    },
+    "APR": {
+      "cmc_id": 38569,
+      "name": "aPriori",
+      "rank": 419,
+      "bsc_address": "0x299AD4299Da5b2b93Fba4c96967B040C7F611099"
+    },
+    "ASTER": {
+      "cmc_id": 36341,
+      "name": "Aster",
+      "rank": 41,
+      "bsc_address": "0x000Ae314E2A2172a039B26378814C252734f556A",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 38444,
+          "name": "[Fake] Aster",
+          "rank": null,
+          "bsc_address": "0xC46F75505a16418D5954BD0EFFe8F8A6338e6dB5"
+        },
+        {
+          "cmc_id": 38462,
+          "name": "Aster",
+          "rank": null,
+          "bsc_address": "0xD17FD7002e1B91bA9a38C00426E83a11db587ce6"
+        },
+        {
+          "cmc_id": 38952,
+          "name": "Aster AI",
+          "rank": null,
+          "bsc_address": "0x6b386e3F98e04558ac14D195a50770c3Df8B1FB7"
+        }
+      ]
+    },
+    "ATOM": {
+      "cmc_id": 3794,
+      "name": "Cosmos",
+      "rank": 54,
+      "bsc_address": "0x0eb3a705fc54725037cc9e008bdede697f62f335"
+    },
+    "AVAX": {
+      "cmc_id": 5805,
+      "name": "Avalanche",
+      "rank": 29,
+      "bsc_address": "0x1ce0c2827e2ef14d5c4f29a091d735a204794041"
+    },
+    "AXL": {
+      "cmc_id": 17799,
+      "name": "Axelar",
+      "rank": 397,
+      "bsc_address": "0x8b1f4432F943c465A973FeDC6d7aa50Fc96f1f65",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 15853,
+          "name": "Axl Inu",
+          "rank": null,
+          "bsc_address": "0x25b24b3c47918b7962b3e49c4f468367f73cc0e0"
+        }
+      ]
+    },
+    "AXS": {
+      "cmc_id": 6783,
+      "name": "Axie Infinity",
+      "rank": 141,
+      "bsc_address": "0x715d400f88c167884bbcc41c5fea407ed4d2f8a0"
+    },
+    "B": {
+      "cmc_id": 36532,
+      "name": "BUILDon",
+      "rank": 122,
+      "bsc_address": "0x6bdcce4a559076e37755a78ce0c06214e59e4444"
+    },
+    "BabyDoge": {
+      "cmc_id": 10407,
+      "name": "Baby Doge Coin",
+      "rank": 343,
+      "bsc_address": "0xc748673057861a797275cd8a068abb95a902e8de",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 35940,
+          "name": "Baby Doge 2.0",
+          "rank": null,
+          "bsc_address": "0x072A55c520a28947336AB5Fc080abeE38Bc541ee"
+        },
+        {
+          "cmc_id": 38867,
+          "name": "BABYDOGE",
+          "rank": null,
+          "bsc_address": "0x93981AEb09cf017306652a49a799f9C9fF90b741"
+        }
+      ]
+    },
+    "BANANAS31": {
+      "cmc_id": 34118,
+      "name": "Banana For Scale",
+      "rank": 287,
+      "bsc_address": "0x3d4f0513e8a29669b960f9dbca61861548a9a760"
+    },
+    "BARD": {
+      "cmc_id": 38408,
+      "name": "Lombard",
+      "rank": 396,
+      "bsc_address": "0xd23A186A78c0B3B805505E5f8ea4083295ef9f3a"
+    },
+    "BAS": {
+      "cmc_id": 37387,
+      "name": "BNB Attestation Service",
+      "rank": 268,
+      "bsc_address": "0x0f0df6cb17ee5e883eddfef9153fc6036bdb4e37",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 19587,
+          "name": "DracooMaster",
+          "rank": null,
+          "bsc_address": "0x40FfAFcd7415ed2F7A902312407181140Ad14E68"
+        }
+      ]
+    },
+    "BAT": {
+      "cmc_id": 1697,
+      "name": "Basic Attention Token",
+      "rank": 153,
+      "bsc_address": "0x101d82428437127bf1608f699cd651e6abf9766e",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 10028,
+          "name": "Bat Finance",
+          "rank": null,
+          "bsc_address": "0xe76804b43f17fc41f226d63fd2a676df409d4678"
+        }
+      ]
+    },
+    "BCH": {
+      "cmc_id": 1831,
+      "name": "Bitcoin Cash",
+      "rank": 22,
+      "bsc_address": "0x8fF795a6F4D97E7887C79beA79aba5cc76444aDf"
+    },
+    "BDCA": {
+      "cmc_id": 35637,
+      "name": "BitDCA",
+      "rank": 370,
+      "bsc_address": "0x0c8382719ef242cae2247e4decb2891fbf699818"
+    },
+    "BDX": {
+      "cmc_id": 3987,
+      "name": "Beldex",
+      "rank": 208,
+      "bsc_address": "0x6ad12E761b438beA3EA09F6C6266556Bb24C2181"
+    },
+    "BEAM": {
+      "cmc_id": 28298,
+      "name": "Beam",
+      "rank": 285,
+      "bsc_address": "0x62D0A8458eD7719FDAF978fe5929C6D342B0bFcE"
+    },
+    "BEAT": {
+      "cmc_id": 38837,
+      "name": "Audiera",
+      "rank": 27,
+      "bsc_address": "0xcf3232B85b43BCa90E51D38cc06Cc8bB8C8A3E36",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 40231,
+          "name": "Audiera AI (beataii.xyz)",
+          "rank": 4510,
+          "bsc_address": "0xBaf069e57AE635e28f33Da73534008dDdCC99F76"
+        }
+      ]
+    },
+    "BILL": {
+      "cmc_id": 39545,
+      "name": "Billions Network",
+      "rank": 225,
+      "bsc_address": "0xDf24f8c21Cb404B3031a450D8e049D6E39FC1fA5",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 10568,
+          "name": "Bill Hwang Finance",
+          "rank": null,
+          "bsc_address": "0x1f36f067f4e425994763da9ee5bcc76f154c82d1"
+        },
+        {
+          "cmc_id": 12084,
+          "name": "Billion",
+          "rank": null,
+          "bsc_address": "0xa873e87c2c935fa11c72003231a2eee7d391ce5f"
+        }
+      ]
+    },
+    "BONK": {
+      "cmc_id": 23095,
+      "name": "Bonk",
+      "rank": 92,
+      "bsc_address": "0xA697e272a73744b343528C3Bc4702F2565b2F422",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 29975,
+          "name": "SUPER BONK",
+          "rank": 6731,
+          "bsc_address": "0xa2117f6Fa3d4De8A7E25001c525fC372CDA884Be"
+        },
+        {
+          "cmc_id": 28758,
+          "name": "Bonk BNB",
+          "rank": null,
+          "bsc_address": "0x58E7f8c59718cA75348eD3745A47A41cd026546a"
+        }
+      ]
+    },
+    "BRETT": {
+      "cmc_id": 29743,
+      "name": "Brett (Based)",
+      "rank": 362,
+      "bsc_address": "0xa7440029eca41deabd8775ef1d6086b37d4df8d6"
+    },
+    "BSB": {
+      "cmc_id": 38889,
+      "name": "Block Street",
+      "rank": 357,
+      "bsc_address": "0x595deaad1eb5476ff1e649fdb7efc36f1e4679cc"
+    },
+    "BTT": {
+      "cmc_id": 16086,
+      "name": "BitTorrent [New]",
+      "rank": 112,
+      "bsc_address": "0x352Cb5E19b12FC216548a2677bD0fce83BaE434B",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 16698,
+          "name": "Battle In Verse",
+          "rank": null,
+          "bsc_address": "0x4a69b6a085f122f958017c66788368928ec80124"
+        },
+        {
+          "cmc_id": 22259,
+          "name": "Bitteam token",
+          "rank": null,
+          "bsc_address": "0xec6432b90e7fd4d9f872cc5c781f05b617db861e"
+        },
+        {
+          "cmc_id": 22912,
+          "name": "ByTrade Token",
+          "rank": null,
+          "bsc_address": "0xe8bd1CA97F8a0582335407B40B0576Df641fA94C"
+        }
+      ]
+    },
+    "CAKE": {
+      "cmc_id": 7186,
+      "name": "PancakeSwap",
+      "rank": 83,
+      "bsc_address": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 7186,
+          "name": "PancakeSwap",
+          "rank": 83,
+          "bsc_address": "0x2779106e4F4A8A28d77A24c18283651a2AE22D1C"
+        }
+      ]
+    },
+    "CHEEMS": {
+      "cmc_id": 33280,
+      "name": "Cheems (cheems.pet)",
+      "rank": 169,
+      "bsc_address": "0x0df0587216a4a1bb7d5082fdc491d93d2dd4b413"
+    },
+    "COAI": {
+      "cmc_id": 38489,
+      "name": "ChainOpera AI",
+      "rank": 327,
+      "bsc_address": "0x0A8D6C86e1bcE73fE4D0bD531e1a567306836EA5",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 32346,
+          "name": "CodeMong Ai",
+          "rank": null,
+          "bsc_address": "0x7Dd4cca136132e2260b3E8b4053CD7Af057c3ed5"
+        }
+      ]
+    },
+    "COMP": {
+      "cmc_id": 5692,
+      "name": "Compound",
+      "rank": 138,
+      "bsc_address": "0x52ce071bd9b1c4b00a0b92d298c512478cad67e8"
+    },
+    "CTM": {
+      "cmc_id": 37745,
+      "name": "c8ntinuum",
+      "rank": 206,
+      "bsc_address": "0xc8Fb80fCc03f699C70ff0CC08C09106288888888"
+    },
+    "CYS": {
+      "cmc_id": 39071,
+      "name": "Cysic",
+      "rank": 293,
+      "bsc_address": "0x0C69199C1562233640e0Db5Ce2c399A88eB507C7"
+    },
+    "DAI": {
+      "cmc_id": 4943,
+      "name": "Dai",
+      "rank": 18,
+      "bsc_address": "0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 23859,
+          "name": "DogeZila Ai",
+          "rank": null,
+          "bsc_address": "0x43bee29430a2dda4bc053dd5669a56efd6e0556a"
+        }
+      ]
+    },
+    "DEXE": {
+      "cmc_id": 7326,
+      "name": "DeXe",
+      "rank": 40,
+      "bsc_address": "0x6E88056E8376Ae7709496Ba64d37fa2f8015ce3e"
+    },
+    "DOGE": {
+      "cmc_id": 74,
+      "name": "Dogecoin",
+      "rank": 10,
+      "bsc_address": "0xba2ae424d960c26247dd6c32edc70b295c744c43",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 28384,
+          "name": "DOGE SATELLITE INU",
+          "rank": 6575,
+          "bsc_address": "0x044F2BC015A9742E4eA9494a3c4B99a0B177205F"
+        },
+        {
+          "cmc_id": 28438,
+          "name": "DOGECOIN X",
+          "rank": 6584,
+          "bsc_address": "0xdAC581adD4C3AE3b95dbb736B10dd7DCAEa399b3"
+        },
+        {
+          "cmc_id": 28872,
+          "name": "SPACE DOGE",
+          "rank": 6624,
+          "bsc_address": "0x2603a2F40Cd0dC2f6a6FB02A0c0768108b9F5F46"
+        }
+      ]
+    },
+    "DOT": {
+      "cmc_id": 6636,
+      "name": "Polkadot",
+      "rank": 43,
+      "bsc_address": "0x7083609fce4d1d8dc0c979aab8c869ea2c873402"
+    },
+    "DUCKY": {
+      "cmc_id": 33852,
+      "name": "Ducky",
+      "rank": 217,
+      "bsc_address": "0xaDB50D6a3f931E5b4A14D06A4A77fe71171A462f",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 39198,
+          "name": "DUCKY (Duckythebrain)",
+          "rank": 4299,
+          "bsc_address": "0x804c3f94A9D693Ec35AFe8d140098e5046816495"
+        },
+        {
+          "cmc_id": 36304,
+          "name": "ducky",
+          "rank": null,
+          "bsc_address": "0xE215f9575e2fAFff8D0D3F9C6866ac656bD25BD9"
+        }
+      ]
+    },
+    "DUSD": {
+      "cmc_id": 36762,
+      "name": "StandX DUSD",
+      "rank": 255,
+      "bsc_address": "0xaf44A1E76F56eE12ADBB7ba8acD3CbD474888122",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 16151,
+          "name": "DUSD Network",
+          "rank": null,
+          "bsc_address": "0x5eba288f8833071ba7cd5c2b356754811c0ce8fb"
+        },
+        {
+          "cmc_id": 23515,
+          "name": "Davos.xyz USD",
+          "rank": null,
+          "bsc_address": "0x8EC1877698ACF262Fe8Ad8a295ad94D6ea258988"
+        },
+        {
+          "cmc_id": 24588,
+          "name": "Deri Trade",
+          "rank": null,
+          "bsc_address": "0x738ea75b01d8db931b4374c6ebd3de82d7d3a272"
+        }
+      ]
+    },
+    "DUSK": {
+      "cmc_id": 4092,
+      "name": "Dusk",
+      "rank": 434,
+      "bsc_address": "0xb2bd0749dbe21f623d9baba856d3b0f0e1bfec9c",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 4092,
+          "name": "Dusk",
+          "rank": 434,
+          "bsc_address": "DUSK-45E"
+        }
+      ]
+    },
+    "EDGE": {
+      "cmc_id": 39720,
+      "name": "edgeX",
+      "rank": 159,
+      "bsc_address": "0x70f2eadf1ca1969ff42b0c78e9da519e8937cbaf"
+    },
+    "ELF": {
+      "cmc_id": 2299,
+      "name": "aelf",
+      "rank": 394,
+      "bsc_address": "0xa3f020a5c92e15be13caf0ee5c95cf79585eecc9",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 22153,
+          "name": "ELF Wallet",
+          "rank": 6317,
+          "bsc_address": "0x56d594d76b37be83c54abf8a4747d60ce58d32c2"
+        },
+        {
+          "cmc_id": 14936,
+          "name": "Elf Token",
+          "rank": null,
+          "bsc_address": "0x82ca3300a503cC10B56d2Ca487bDf81D5FA09Eb2"
+        }
+      ]
+    },
+    "ETC": {
+      "cmc_id": 1321,
+      "name": "Ethereum Classic",
+      "rank": 53,
+      "bsc_address": "0x3d6545b08693dae087e957cb1180ee38b9e3c25e"
+    },
+    "ETH": {
+      "cmc_id": 1027,
+      "name": "Ethereum",
+      "rank": 2,
+      "bsc_address": "0x2170ed0880ac9a755fd29b2688956bd959f933f8"
+    },
+    "EURI": {
+      "cmc_id": 32644,
+      "name": "Eurite",
+      "rank": 355,
+      "bsc_address": "0x9d1a7a3191102e9f900faa10540837ba84dcbae7"
+    },
+    "FDUSD": {
+      "cmc_id": 26081,
+      "name": "First Digital USD",
+      "rank": 99,
+      "bsc_address": "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409"
+    },
+    "FET": {
+      "cmc_id": 3773,
+      "name": "Artificial Superintelligence Alliance",
+      "rank": 86,
+      "bsc_address": "0x031b41e504677879370e9dbcf937283a8691fa7f"
+    },
+    "FF": {
+      "cmc_id": 38482,
+      "name": "Falcon Finance",
+      "rank": 126,
+      "bsc_address": "0xac23b90a79504865d52b49b327328411a23d4db2",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 13073,
+          "name": "Fantasy Fox",
+          "rank": null,
+          "bsc_address": "0x147D7D47C9340253Dc5adf0574E7Bc4B05630aed"
+        },
+        {
+          "cmc_id": 27096,
+          "name": "FancyFoxes",
+          "rank": null,
+          "bsc_address": "0x116D4DbC4646E68e18f7cbD58b42107e873fA450"
+        }
+      ]
+    },
+    "FIL": {
+      "cmc_id": 2280,
+      "name": "Filecoin",
+      "rank": 73,
+      "bsc_address": "0x0d8ce2a99bb6e3b7db580ed848240e4a0f9ae153"
+    },
+    "FLOKI": {
+      "cmc_id": 10804,
+      "name": "FLOKI",
+      "rank": 119,
+      "bsc_address": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 13074,
+          "name": "Baby Moon Floki",
+          "rank": 6102,
+          "bsc_address": "0x54e87ed5a096f09d9665fd114002bddfc2084a7f"
+        },
+        {
+          "cmc_id": 29860,
+          "name": "SUPER FLOKI",
+          "rank": 6726,
+          "bsc_address": "0xE02b264915474eB711832BFB8fB6A765B2d36e68"
+        },
+        {
+          "cmc_id": 30253,
+          "name": "CRAZY FLOKI",
+          "rank": 6761,
+          "bsc_address": "0x7Cea2ECba159f793C6eC302a5883fA0d3F018899"
+        }
+      ]
+    },
+    "FORM": {
+      "cmc_id": 23635,
+      "name": "Four",
+      "rank": 192,
+      "bsc_address": "0x5b73A93b4E5e4f1FD27D8b3F8C97D69908b5E284",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 10408,
+          "name": "Formation Fi",
+          "rank": null,
+          "bsc_address": "0x25a528af62e56512a19ce8c3cab427807c28cc19"
+        }
+      ]
+    },
+    "FRAX": {
+      "cmc_id": 6952,
+      "name": "Legacy Frax Dollar",
+      "rank": 218,
+      "bsc_address": "0x90C97F71E18723b0Cf0dfa30ee176Ab653E89F40",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 6953,
+          "name": "Frax (prev. FXS)",
+          "rank": 623,
+          "bsc_address": "0xe48A3d7d0Bc88d552f730B62c006bC925eadB9eE"
+        }
+      ]
+    },
+    "FRXUSD": {
+      "cmc_id": 36039,
+      "name": "Frax USD",
+      "rank": 245,
+      "bsc_address": "0x80Eede496655FB9047dd39d9f418d5483ED600df"
+    },
+    "GENIUS": {
+      "cmc_id": 39841,
+      "name": "Genius Terminal",
+      "rank": 149,
+      "bsc_address": "0x1F12B85aAC097E43Aa1555b2881E98a51090e9A6",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 10948,
+          "name": "Genius Coin",
+          "rank": null,
+          "bsc_address": "0xbA5b0408B0645ec091B3bB76Ee793091A9399BF2"
+        }
+      ]
+    },
+    "GOMINING": {
+      "cmc_id": 10180,
+      "name": "GoМining",
+      "rank": 252,
+      "bsc_address": "0x7Ddc52c4De30e94Be3A6A0A2b259b2850f421989"
+    },
+    "GUA": {
+      "cmc_id": 38984,
+      "name": "SUPERFORTUNE",
+      "rank": 273,
+      "bsc_address": "0xa5c8e1513b6a08334b479fe4d71f1253259469be"
+    },
+    "GWEI": {
+      "cmc_id": 39379,
+      "name": "ETHGas",
+      "rank": 103,
+      "bsc_address": "0x30117E4bC17d7B044194b76A38365C53b72F7D49"
+    },
+    "H": {
+      "cmc_id": 36922,
+      "name": "Humanity",
+      "rank": 68,
+      "bsc_address": "0x44f161ae29361e332dea039dfa2f404e0bc5b5cc"
+    },
+    "HOME": {
+      "cmc_id": 36133,
+      "name": "Defi App",
+      "rank": 170,
+      "bsc_address": "0x4bfaa776991e85e5f8b1255461cbbd216cfc714f",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 10342,
+          "name": "HomeCoin",
+          "rank": null,
+          "bsc_address": "0x57c9487f30D04aEE52D323586EC9A23d05A1504e"
+        }
+      ]
+    },
+    "HTX": {
+      "cmc_id": 29160,
+      "name": "HTX",
+      "rank": 204,
+      "bsc_address": "0x61ec85ab89377db65762e234c946b5c25a56e99e"
+    },
+    "HUMA": {
+      "cmc_id": 36576,
+      "name": "Huma Finance",
+      "rank": 288,
+      "bsc_address": "0x92516e0DDf1dDBF7FAB1b79CaC26689fDC5ba8e6"
+    },
+    "INJ": {
+      "cmc_id": 7226,
+      "name": "Injective",
+      "rank": 79,
+      "bsc_address": "0xa2b726b1145a4773f68593cf171187d8ebe4d495"
+    },
+    "IP": {
+      "cmc_id": 35626,
+      "name": "Story",
+      "rank": 176,
+      "bsc_address": "0x4d6394bc3031f751edce368c189b0e060b527107"
+    },
+    "IRYS": {
+      "cmc_id": 38978,
+      "name": "Irys",
+      "rank": 440,
+      "bsc_address": "0x91152B4Ef635403efBAe860edD0F8c321d7c035d"
+    },
+    "KAVA": {
+      "cmc_id": 4846,
+      "name": "Kava",
+      "rank": 407,
+      "bsc_address": "0x9BAFC8d4b487cEBff201721702507a3E2C67ad79"
+    },
+    "KITE": {
+      "cmc_id": 38828,
+      "name": "Kite",
+      "rank": 98,
+      "bsc_address": "0x904567252D8F48555b7447c67dCA23F0372E16be",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 11984,
+          "name": "Kite Sync",
+          "rank": null,
+          "bsc_address": "0xede26a1ee14281b58a5238a3ff246b02358a13b6"
+        }
+      ]
+    },
+    "KOGE": {
+      "cmc_id": 7184,
+      "name": "48 Club Token",
+      "rank": 221,
+      "bsc_address": "0xe6df05ce8c8301223373cf5b969afcb1498c5528"
+    },
+    "LAB": {
+      "cmc_id": 33223,
+      "name": "LAB",
+      "rank": 202,
+      "bsc_address": "0x7ec43Cf65F1663F820427C62A5780b8f2E25593A"
+    },
+    "LDO": {
+      "cmc_id": 8000,
+      "name": "Lido DAO",
+      "rank": 127,
+      "bsc_address": "0x986854779804799C1d68867F5E03e601E781e41b"
+    },
+    "LINK": {
+      "cmc_id": 1975,
+      "name": "Chainlink",
+      "rank": 17,
+      "bsc_address": "0xf8a0bf9cf54bb92f17374d9e9a321e6a111a51bd",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 1975,
+          "name": "Chainlink",
+          "rank": 17,
+          "bsc_address": "0x99f0d88B81b758AB07E22C7AbA00E0121a882dEA"
+        }
+      ]
+    },
+    "lisUSD": {
+      "cmc_id": 21330,
+      "name": "lisUSD",
+      "rank": 281,
+      "bsc_address": "0x0782b6d8c4551B9760e74c0545a9bCD90bdc41E5"
+    },
+    "LTC": {
+      "cmc_id": 2,
+      "name": "Litecoin",
+      "rank": 25,
+      "bsc_address": "0x4338665cbb7b2485a8855a139b75d5e34ab0db94"
+    },
+    "LUNC": {
+      "cmc_id": 4172,
+      "name": "Terra Classic",
+      "rank": 91,
+      "bsc_address": "0x156ab3346823B651294766e23e6Cf87254d68962",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 39117,
+          "name": "Terra Classic AI",
+          "rank": 5255,
+          "bsc_address": "0x45b695F2594713c96B52468ED168A691986b858A"
+        }
+      ]
+    },
+    "LUR": {
+      "cmc_id": 36804,
+      "name": "Lumera Health",
+      "rank": 298,
+      "bsc_address": "0xc66B6f38aE5053A109cfd8639E0Ee17EC69cf788"
+    },
+    "M": {
+      "cmc_id": 35491,
+      "name": "MemeCore",
+      "rank": 23,
+      "bsc_address": "0x22b1458e780f8fa71e2f84502cee8b5a3cc731fa",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 20696,
+          "name": "MetaVerse-M",
+          "rank": 6273,
+          "bsc_address": "0x558ad2b02cE979Ca54F88206ED8597c8c740774E"
+        }
+      ]
+    },
+    "MY": {
+      "cmc_id": 35269,
+      "name": "MetYa",
+      "rank": 323,
+      "bsc_address": "0xf0ebb572643336834d516c485ad31d3299999999"
+    },
+    "MYX": {
+      "cmc_id": 36410,
+      "name": "MYX Finance",
+      "rank": 300,
+      "bsc_address": "0xD82544bf0dfe8385eF8FA34D67e6e4940CC63e16"
+    },
+    "NEX": {
+      "cmc_id": 39965,
+      "name": "Nexus",
+      "rank": 136,
+      "bsc_address": "0x365de036a1f7dccb621530d517133521debb2013",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 19461,
+          "name": "Boundless Nexus",
+          "rank": null,
+          "bsc_address": "0x693d4af82c298d0b8bd2cdf769e01d8e7d2b6cc3"
+        }
+      ]
+    },
+    "NFT": {
+      "cmc_id": 9816,
+      "name": "AINFT",
+      "rank": 111,
+      "bsc_address": "0x20ee7b720f4e4c4ffcb00c4065cdae55271aecca",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 10829,
+          "name": "NEFTiPEDiA",
+          "rank": null,
+          "bsc_address": "0xfaab744db9def8e13194600ed02bc5d5bed3b85c"
+        }
+      ]
+    },
+    "NIGHT": {
+      "cmc_id": 39064,
+      "name": "Midnight",
+      "rank": 74,
+      "bsc_address": "0xfe930c2d63aed9b82fc4dbc801920dd2c1a3224f"
+    },
+    "NILA": {
+      "cmc_id": 36302,
+      "name": "MindWaveDAO",
+      "rank": 322,
+      "bsc_address": "0x00f8Da33734FeB9b946fEC2228C25072D2e2E41f"
+    },
+    "NXPC": {
+      "cmc_id": 36044,
+      "name": "NEXPACE",
+      "rank": 180,
+      "bsc_address": "0xf2b51cc1850fed939658317a22d73d3482767591"
+    },
+    "OPEN": {
+      "cmc_id": 37456,
+      "name": "OpenLedger",
+      "rank": 316,
+      "bsc_address": "0xa227cc36938f0c9e09ce0e64dfab226cad739447",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 7783,
+          "name": "Open Governance Token",
+          "rank": null,
+          "bsc_address": "0xabae871b7e3b67aeec6b46ae9fe1a91660aadac5"
+        },
+        {
+          "cmc_id": 18727,
+          "name": "Open Data Protocol",
+          "rank": null,
+          "bsc_address": "0xcbc26971f635784b187597ac17a9c1d9a7f1401e"
+        }
+      ]
+    },
+    "PEAQ": {
+      "cmc_id": 14588,
+      "name": "peaq",
+      "rank": 404,
+      "bsc_address": "0x8b9Ee39195eA99d6ddD68030F44131116bc218F6"
+    },
+    "PENDLE": {
+      "cmc_id": 9481,
+      "name": "Pendle",
+      "rank": 129,
+      "bsc_address": "0xb3Ed0A426155B79B898849803E3B36552f7ED507"
+    },
+    "PENGU": {
+      "cmc_id": 34466,
+      "name": "Pudgy Penguins",
+      "rank": 88,
+      "bsc_address": "0x6418c0dd099a9fda397c766304cdd918233e8847"
+    },
+    "PIEVERSE": {
+      "cmc_id": 38849,
+      "name": "Pieverse",
+      "rank": 139,
+      "bsc_address": "0x0e63b9c287e32a05e6b9ab8ee8df88a2760225a9"
+    },
+    "PLUME": {
+      "cmc_id": 35364,
+      "name": "Plume",
+      "rank": 346,
+      "bsc_address": "0x5aFadCd1E8E3CA78Ee2D37100102f2aec8Bc0Aa8"
+    },
+    "Q": {
+      "cmc_id": 38236,
+      "name": "Quack AI",
+      "rank": 310,
+      "bsc_address": "0xc07e1300dc138601FA6B0b59f8D0FA477e690589"
+    },
+    "RAVE": {
+      "cmc_id": 38967,
+      "name": "RaveDAO",
+      "rank": 200,
+      "bsc_address": "0x97693439ea2f0ecdeb9135881e49f354656a911c"
+    },
+    "RAY": {
+      "cmc_id": 8526,
+      "name": "Raydium",
+      "rank": 142,
+      "bsc_address": "0x13b6A55662f6591f8B8408Af1C73B017E32eEdB8"
+    },
+    "REAL": {
+      "cmc_id": 14721,
+      "name": "RealLink",
+      "rank": 270,
+      "bsc_address": "0x65e7a112dB1142EAE919201b1232f7aA488Ed83c",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 13698,
+          "name": "Real Realm",
+          "rank": null,
+          "bsc_address": "0xE91cd52Bd65fe23A3EAE40E3eB87180E8306399F"
+        }
+      ]
+    },
+    "RIVER": {
+      "cmc_id": 38417,
+      "name": "River",
+      "rank": 182,
+      "bsc_address": "0xdA7AD9dea9397cffdDAE2F8a052B82f1484252B3"
+    },
+    "ROSE": {
+      "cmc_id": 7653,
+      "name": "Oasis",
+      "rank": 410,
+      "bsc_address": "0xF00600eBC7633462BC4F9C61eA2cE99F5AAEBd4a"
+    },
+    "SAHARA": {
+      "cmc_id": 36671,
+      "name": "Sahara AI",
+      "rank": 369,
+      "bsc_address": "0xFDFfB411C4A70AA7C95D5C981a6Fb4Da867e1111"
+    },
+    "SFP": {
+      "cmc_id": 8119,
+      "name": "SafePal",
+      "rank": 160,
+      "bsc_address": "0xd41fdb03ba84762dd66a0af1a6c8540ff1ba5dfb"
+    },
+    "SHIB": {
+      "cmc_id": 5994,
+      "name": "Shiba Inu",
+      "rank": 28,
+      "bsc_address": "0x2859e4544c4bb03966803b044a93563bd2d0dd4d",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 30271,
+          "name": "Shibaqua",
+          "rank": null,
+          "bsc_address": "0xb455D798E8b07dBbF9D4609f7b7bdc574463D0b3"
+        }
+      ]
+    },
+    "SIREN": {
+      "cmc_id": 35766,
+      "name": "siren",
+      "rank": 96,
+      "bsc_address": "0x997a58129890bbda032231a52ed1ddc845fc18e1"
+    },
+    "SKYAI": {
+      "cmc_id": 36300,
+      "name": "SKYAI",
+      "rank": 102,
+      "bsc_address": "0x92aa03137385F18539301349dcfC9EbC923fFb10"
+    },
+    "SLX": {
+      "cmc_id": 40047,
+      "name": "Solstice",
+      "rank": 452,
+      "bsc_address": "0x02bcC4C181B83a8c0A342BC003389CbEcb4BC54D",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 38542,
+          "name": "SLIMEX",
+          "rank": 1111,
+          "bsc_address": "0x8A063A9ff4dE28dcB87117cc759BE6cE70e09F81"
+        }
+      ]
+    },
+    "SMILEK": {
+      "cmc_id": 10186,
+      "name": "Smilek to the Bank",
+      "rank": 258,
+      "bsc_address": "0x4f9d3AdbfAF4579518b1Ca7E06468A363897B997"
+    },
+    "SNX": {
+      "cmc_id": 2586,
+      "name": "Synthetix",
+      "rank": 198,
+      "bsc_address": "0x9ac983826058b8a9c7aa1c9171441191232e8404",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 24157,
+          "name": "SincroniX",
+          "rank": null,
+          "bsc_address": "0x45d51Acc587574536CB292500d35dD3060796C63"
+        }
+      ]
+    },
+    "SOON": {
+      "cmc_id": 36542,
+      "name": "SOON",
+      "rank": 184,
+      "bsc_address": "0xb9E1Fd5A02D3A33b25a14d661414E6ED6954a721",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 39279,
+          "name": "Southern Tokenized Stock (Ondo)",
+          "rank": 3453,
+          "bsc_address": "0xd7a6353a23ed2c4fcac29a63cbbe3f65ffef41f5"
+        }
+      ]
+    },
+    "STABLE": {
+      "cmc_id": 38892,
+      "name": "Stable",
+      "rank": 61,
+      "bsc_address": "0x011EBe7d75E2C9D1E0bD0be0bEf5C36f0A90075F"
+    },
+    "STG": {
+      "cmc_id": 18934,
+      "name": "Stargate Finance",
+      "rank": 89,
+      "bsc_address": "0xb0d502e938ed5f4df2e681fe6e419ff29631d62b",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 16572,
+          "name": "StarGod",
+          "rank": null,
+          "bsc_address": "0x73c8ee269E60537585a9bA9AF55842A8C091939e"
+        }
+      ]
+    },
+    "SUSHI": {
+      "cmc_id": 6758,
+      "name": "SushiSwap",
+      "rank": 405,
+      "bsc_address": "0x947950BcC74888a40Ffa2593C5798F11Fc9124C4"
+    },
+    "TAC": {
+      "cmc_id": 37338,
+      "name": "TAC Protocol",
+      "rank": 280,
+      "bsc_address": "0x1219c409fabe2c27bd0d1a565daeed9bd9f271de",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 13743,
+          "name": "TaiChi",
+          "rank": null,
+          "bsc_address": "0xe49bfc53a195a62d78a941a1967d7b0f83a47c14"
+        },
+        {
+          "cmc_id": 15091,
+          "name": "Thaicoin",
+          "rank": null,
+          "bsc_address": "0xcFC9321e3aA3a15bbBC4C4390dA7407F3eC84145"
+        }
+      ]
+    },
+    "TAG": {
+      "cmc_id": 34958,
+      "name": "Tagger",
+      "rank": 174,
+      "bsc_address": "0x208bf3e7da9639f1eaefa2de78c23396b0682025",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 14896,
+          "name": "Tag Protocol",
+          "rank": 5200,
+          "bsc_address": "0x717fb7B6d0c3d7f1421Cc60260412558283A6ae5"
+        }
+      ]
+    },
+    "TON": {
+      "cmc_id": 11419,
+      "name": "Toncoin",
+      "rank": 19,
+      "bsc_address": "0x76a797a59ba2c17726896976b7b3747bfd1d220f",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 39249,
+          "name": "AT&T Tokenized Stock (Ondo)",
+          "rank": 3548,
+          "bsc_address": "0x4255279af47cf10efb9a5c8839f90170f4ef759f"
+        }
+      ]
+    },
+    "TOSHI": {
+      "cmc_id": 27750,
+      "name": "Toshi",
+      "rank": 381,
+      "bsc_address": "0x6a2608Dabe09bc1128EEC7275B92DFB939D5Db3f",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 39017,
+          "name": "Toshi Inu",
+          "rank": 7735,
+          "bsc_address": "0xc8Ee5c6306aDf9C776157CaFAAB4ec7656515E98"
+        }
+      ]
+    },
+    "TRIA": {
+      "cmc_id": 39382,
+      "name": "Tria",
+      "rank": 383,
+      "bsc_address": "0xb0b92de23baa85fb06208277e925ced53edab482"
+    },
+    "TRX": {
+      "cmc_id": 1958,
+      "name": "TRON",
+      "rank": 8,
+      "bsc_address": "0xCE7de646e7208a4Ef112cb6ed5038FA6cC6b12e3"
+    },
+    "TUSD": {
+      "cmc_id": 2563,
+      "name": "TrueUSD",
+      "rank": 81,
+      "bsc_address": "0x40af3827F39D0EAcBF4A168f8D4ee67c121D11c9",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 2563,
+          "name": "TrueUSD",
+          "rank": 81,
+          "bsc_address": "TUSDB-888"
+        }
+      ]
+    },
+    "TWT": {
+      "cmc_id": 5964,
+      "name": "Trust Wallet Token",
+      "rank": 140,
+      "bsc_address": "0x4b0f1812e5df2a09796481ff14017e6005508003",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 5964,
+          "name": "Trust Wallet Token",
+          "rank": 140,
+          "bsc_address": "TWT-8C2"
+        }
+      ]
+    },
+    "U": {
+      "cmc_id": 39120,
+      "name": "United Stables",
+      "rank": 55,
+      "bsc_address": "0xcE24439F2D9C6a2289F741120FE202248B666666",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 38270,
+          "name": "Union",
+          "rank": 2023,
+          "bsc_address": "0xba5eD44733953d79717F6269357C77718C8Ba5ed"
+        },
+        {
+          "cmc_id": 36853,
+          "name": "U",
+          "rank": 2279,
+          "bsc_address": "0x6f88DBed8f178F71F6A0C27Df10D4f0B8dDf4444"
+        },
+        {
+          "cmc_id": 21219,
+          "name": "U Coin",
+          "rank": null,
+          "bsc_address": "0x89dB9B433FeC1307d3dc8908f2813e9f7a1d38F0"
+        }
+      ]
+    },
+    "UAI": {
+      "cmc_id": 38841,
+      "name": "UnifAI Network",
+      "rank": 292,
+      "bsc_address": "0x3e5d4f8aee0d9b3082d5f6da5d6e225d17ba9ea0"
+    },
+    "UB": {
+      "cmc_id": 38339,
+      "name": "Unibase",
+      "rank": 216,
+      "bsc_address": "0x40b8129B786D766267A7a118cF8C07E31CDB6Fde",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 31818,
+          "name": "UbitEx",
+          "rank": null,
+          "bsc_address": "0x697F883b7E84ea84E0880ABC80b6a5bdF7DaA5e0"
+        }
+      ]
+    },
+    "UNI": {
+      "cmc_id": 7083,
+      "name": "Uniswap",
+      "rank": 45,
+      "bsc_address": "0xbf5140a22578168fd562dccf235e5d43a02ce9b1",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 1605,
+          "name": "Universe",
+          "rank": null,
+          "bsc_address": "0x576525b21E8FD5b4F2620A8dfA59d2b32C1d292a"
+        }
+      ]
+    },
+    "USD1": {
+      "cmc_id": 36148,
+      "name": "World Liberty Financial USD",
+      "rank": 21,
+      "bsc_address": "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 37598,
+          "name": "Vellum USD",
+          "rank": null,
+          "bsc_address": "0x5c7841b87F79Cec0B1B884C6eD463Ada49536aAd"
+        }
+      ]
+    },
+    "USDC": {
+      "cmc_id": 3408,
+      "name": "USDC",
+      "rank": 5,
+      "bsc_address": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
+    },
+    "USDD": {
+      "cmc_id": 19891,
+      "name": "USDD",
+      "rank": 48,
+      "bsc_address": "0x45e51bc23d592eb2dba86da3985299f7895d66ba"
+    },
+    "USDe": {
+      "cmc_id": 29470,
+      "name": "Ethena USDe",
+      "rank": 20,
+      "bsc_address": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 111,
+          "name": "USDe",
+          "rank": null,
+          "bsc_address": "0x6664D47a0985584e8C1d99da138fE211b1c5aE67"
+        }
+      ]
+    },
+    "USDf": {
+      "cmc_id": 35721,
+      "name": "Falcon USD",
+      "rank": 205,
+      "bsc_address": "0xb3b02e4a9fb2bd28cc2ff97b0ab3f6b3ec1ee9d2",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 35437,
+          "name": "Aster USDF",
+          "rank": 248,
+          "bsc_address": "0x5A110fC00474038f6c02E89C707D638602EA44B5"
+        },
+        {
+          "cmc_id": 6653,
+          "name": "FolgoryUSD",
+          "rank": 5928,
+          "bsc_address": "0x3ab170fb62680b27783fe8090ffea2c15c53e280"
+        }
+      ]
+    },
+    "USDF": {
+      "cmc_id": 35721,
+      "name": "Falcon USD",
+      "rank": 205,
+      "bsc_address": "0xb3b02e4a9fb2bd28cc2ff97b0ab3f6b3ec1ee9d2",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 35437,
+          "name": "Aster USDF",
+          "rank": 248,
+          "bsc_address": "0x5A110fC00474038f6c02E89C707D638602EA44B5"
+        },
+        {
+          "cmc_id": 6653,
+          "name": "FolgoryUSD",
+          "rank": 5928,
+          "bsc_address": "0x3ab170fb62680b27783fe8090ffea2c15c53e280"
+        }
+      ]
+    },
+    "USDT": {
+      "cmc_id": 825,
+      "name": "Tether USDt",
+      "rank": 3,
+      "bsc_address": "0x55d398326f99059ff775485246999027b3197955",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 825,
+          "name": "Tether USDt",
+          "rank": 3,
+          "bsc_address": "0x9e5AAC1Ba1a2e6aEd6b32689DFcF62A509Ca96f3"
+        }
+      ]
+    },
+    "VCNT": {
+      "cmc_id": 28656,
+      "name": "ViciCoin",
+      "rank": 253,
+      "bsc_address": "0xc6BDFC4f2E90196738873E824a9eFa03F7c64176"
+    },
+    "VELO": {
+      "cmc_id": 7127,
+      "name": "Velo",
+      "rank": 348,
+      "bsc_address": "0xf486ad071f3bee968384d2e39e2d8af0fcf6fd46"
+    },
+    "WFI": {
+      "cmc_id": 34261,
+      "name": "WeFi",
+      "rank": 224,
+      "bsc_address": "0x90c48855bb69f9d2c261efd0d8c7f35990f2dd6f"
+    },
+    "WLFI": {
+      "cmc_id": 33251,
+      "name": "World Liberty Financial",
+      "rank": 37,
+      "bsc_address": "0x47474747477b199288bF72a1D702f7Fe0Fb1DEeA",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 37461,
+          "name": "World Liberty Financial (worldlibertyfinancial.education)",
+          "rank": 7559,
+          "bsc_address": "0x417C2BF30A666E9228f561B417D0E02cb7145dBa"
+        }
+      ]
+    },
+    "XAUM": {
+      "cmc_id": 34212,
+      "name": "Matrixdock Gold",
+      "rank": 429,
+      "bsc_address": "0x23AE4fd8E7844cdBc97775496eBd0E8248656028"
+    },
+    "XAUt": {
+      "cmc_id": 5176,
+      "name": "Tether Gold",
+      "rank": 34,
+      "bsc_address": "0x21cAef8A43163Eea865baeE23b9C2E327696A3bf"
+    },
+    "XCN": {
+      "cmc_id": 18679,
+      "name": "Onyxcoin",
+      "rank": 151,
+      "bsc_address": "0x7324c7C0d95CEBC73eEa7E85CbAac0dBdf88a05b"
+    },
+    "XPL": {
+      "cmc_id": 36645,
+      "name": "Plasma",
+      "rank": 143,
+      "bsc_address": "0x405FBc9004D857903bFD6b3357792D71a50726b0",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 37668,
+          "name": "Pulse",
+          "rank": 3836,
+          "bsc_address": "0xf84dD1aC34C0043d109f6600f98302CdD3e5A6eb"
+        }
+      ]
+    },
+    "XPR": {
+      "cmc_id": 5350,
+      "name": "XPR Network",
+      "rank": 326,
+      "bsc_address": "0x5de3939b2f811a61d830e6f52d13b066881412ab"
+    },
+    "XRP": {
+      "cmc_id": 52,
+      "name": "XRP",
+      "rank": 6,
+      "bsc_address": "0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 38499,
+          "name": "XRP AI",
+          "rank": 7660,
+          "bsc_address": "0xC031F335e7F7B10E559225d723bF189F7C9A1595"
+        }
+      ]
+    },
+    "XUSD": {
+      "cmc_id": 32372,
+      "name": "StraitsX USD",
+      "rank": 443,
+      "bsc_address": "0xF81aC2E1A0373ddE1BcE01E2Fe694a9b7E3bfcB9",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 16177,
+          "name": "xUSD Token",
+          "rank": 5233,
+          "bsc_address": "0x324E8E649A6A3dF817F97CdDBED2b746b62553dD"
+        }
+      ]
+    },
+    "YFI": {
+      "cmc_id": 5864,
+      "name": "Yearn",
+      "rank": 315,
+      "bsc_address": "0x88f1a5ae2a3bf98aeaf342d26b30a79438c9142e"
+    },
+    "ZAMA": {
+      "cmc_id": 39332,
+      "name": "Zama",
+      "rank": 303,
+      "bsc_address": "0x6907a5986c4950bdaf2f81828ec0737ce787519f"
+    },
+    "ZEC": {
+      "cmc_id": 1437,
+      "name": "Zcash",
+      "rank": 12,
+      "bsc_address": "0x1ba42e5193dfa8b03d15dd1b86a3113bbbef8eeb",
+      "ambiguous_alternatives": [
+        {
+          "cmc_id": 38976,
+          "name": "Zcash AI",
+          "rank": 3572,
+          "bsc_address": "0x789f9ca66508de8e2442db2697193c204e41e732"
+        }
+      ]
+    },
+    "ZETA": {
+      "cmc_id": 21259,
+      "name": "ZetaChain",
+      "rank": 364,
+      "bsc_address": "0x0000028a2eB8346cd5c0267856aB7594B7a55308"
+    },
+    "ZIG": {
+      "cmc_id": 9260,
+      "name": "ZIGChain",
+      "rank": 274,
+      "bsc_address": "0x8C907e0a72C3d55627E853f4ec6a96b0C8771145"
+    },
+    "ZIL": {
+      "cmc_id": 2469,
+      "name": "Zilliqa",
+      "rank": 330,
+      "bsc_address": "0xb86abcb37c3a4b64f74f59301aff131a1becc787"
+    },
+    "ZRO": {
+      "cmc_id": 26997,
+      "name": "LayerZero",
+      "rank": 104,
+      "bsc_address": "0x6985884c4392d348587b19cb9eaaf157f13271cd"
+    },
+    "币安人生": {
+      "bsc_address": null,
+      "candidates": []
+    }
+  }
+}
