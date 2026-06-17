@@ -175,6 +175,27 @@ async def quotes_for(symbols: list[str]) -> dict[str, dict]:
     }
 
 
+# --- Quotes-only (the fast loop's per-tick fetch: ONE credit) -------------------
+
+async def fetch_quotes_only() -> dict[str, dict]:
+    """Just the tracked-universe quotes — one batched CMC call (1 credit), no macro.
+    This is what the 30s fast loop polls; the expensive macro read is cached and
+    refreshed separately (see aria.regime). Returns {symbol -> quote fields}."""
+    if config.SIGNALS_MODE == "fixtures":
+        return fetch_snapshot_from_fixtures().token_quotes
+    c = _get_client()
+    universe = list(config.BLUE_CHIPS) + list(config.STABLES)
+    ids = [i for s in universe if (i := await c.resolve_id(s)) is not None]
+    if not ids:
+        return {}
+    payload = await c.quotes(ids)
+    return {
+        str(q.get("symbol", "")).upper(): q
+        for q in _normalize_quotes(payload)
+        if q.get("symbol")
+    }
+
+
 # --- Entry point ---------------------------------------------------------------
 
 async def fetch_snapshot() -> MarketSnapshot:

@@ -70,7 +70,8 @@ class TestPrompt:
     def test_system_prompt_carries_rules(self):
         assert f"{config.MAX_DRAWDOWN_PCT:.0f}%" in SYSTEM_PROMPT
         assert "mean_reversion" in SYSTEM_PROMPT  # explicitly disabled
-        assert "NOT eligible" in SYSTEM_PROMPT    # BNB/WBNB warning
+        assert "AUTHORITATIVE" in SYSTEM_PROMPT   # eligible-list is the source of truth
+        assert "are NOT" in SYSTEM_PROMPT         # BTC/BNB/WBNB warning
 
     def test_user_message_contains_signals_and_universe(self):
         snap = fetch_snapshot_from_fixtures()

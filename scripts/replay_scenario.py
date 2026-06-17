@@ -106,8 +106,12 @@ async def run() -> None:
         async def fake_fetch():
             return snap
 
-        main_mod.load_portfolio = fake_load            # type: ignore[assignment]
-        main_mod.signals.fetch_snapshot = fake_fetch   # type: ignore[assignment]
+        async def fake_quotes():
+            return snap.token_quotes
+
+        main_mod.load_portfolio = fake_load              # type: ignore[assignment]
+        main_mod.signals.fetch_snapshot = fake_fetch     # type: ignore[assignment]
+        main_mod.signals.fetch_quotes_only = fake_quotes # type: ignore[assignment]
 
         print(f"[{i:02d}] {ts:%m-%d %H:%M} ${value:6.1f} F&G={fg:2d} dd={portfolio.drawdown_pct:4.1f}%  {note}")
         await main_mod.run_cycle(store, dry_run=True)

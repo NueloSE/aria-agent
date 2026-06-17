@@ -21,10 +21,10 @@ def portfolio(value: float = 100.0, peak: float = 100.0,
 
 
 def buy(token: str = "CAKE", size: float = 10.0, stop: float | None = 6.0,
-        conf: float = 0.8) -> Decision:
+        conf: float = 0.8, target: float | None = 10.0) -> Decision:
     return Decision(regime="trending", mode="narrative_rotation", action="buy",
                     token_symbol=token, size_pct=size, stop_loss_pct=stop,
-                    confidence=conf, reasoning="test")
+                    target_pct=target, confidence=conf, reasoning="test")
 
 
 @pytest.fixture()

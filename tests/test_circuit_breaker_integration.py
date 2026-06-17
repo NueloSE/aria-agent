@@ -91,14 +91,15 @@ class TestPnLSlide:
         assert trade == ("compliance", "USDT", "ETH")
 
     async def test_breach_cycle_skips_brain_entirely(self, store, monkeypatch):
-        """At breach, the LLM is not consulted — the rule engine acts alone."""
+        """At breach, the LLM is not consulted — the rule engine acts alone. The brain
+        is now only the entry JUDGE, so that is what must never fire during a breach."""
         called = []
 
-        async def spy_decide(*a, **k):  # pragma: no cover - should never run
+        async def spy_judge(*a, **k):  # pragma: no cover - should never run
             called.append(1)
             raise AssertionError("brain must not be consulted during breach")
 
-        monkeypatch.setattr(main_mod.brain, "decide", spy_decide)
+        monkeypatch.setattr(main_mod.brain, "judge_entry", spy_judge)
         await run_with_value(store, monkeypatch, 70.0)  # 30% dd
         assert safety.is_halted(store)
         assert not called

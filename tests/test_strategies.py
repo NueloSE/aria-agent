@@ -124,9 +124,42 @@ class TestPreservation:
         assert p.action == "hold"
 
 
-class TestMeanReversionDisabled:
-    def test_always_holds(self):
-        snap = fetch_snapshot_from_fixtures()
+class TestMeanReversionReclaim:
+    """Counter-trend oversold-reclaim — works in any regime, never catches knives."""
+
+    def _snap(self, quotes: dict[str, dict]) -> MarketSnapshot:
+        return MarketSnapshot(timestamp=NOW, token_quotes=quotes)
+
+    def test_oversold_reclaim_buys(self):
+        # ETH washed out (7d -14%, 30d -20%) AND turning up (24h +1.2%)
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_24h": 1.2, "percent_change_7d": -14.0,
+                                   "percent_change_30d": -20.0, "volume_24h": "9 B"}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "buy"
+        assert p.token_symbol == "ETH"
+        assert p.target_pct == config.MR_TARGET_PCT
+
+    def test_no_reclaim_holds_no_knife(self):
+        # washed out but STILL falling (24h -3%) -> never catch the knife
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_24h": -3.0, "percent_change_7d": -14.0,
+                                   "percent_change_30d": -20.0, "volume_24h": "9 B"}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "hold"
+        assert "no reclaim" in p.rationale
+
+    def test_not_washed_out_holds(self):
+        # turning up but not actually oversold -> no setup
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_24h": 1.2, "percent_change_7d": -2.0,
+                                   "percent_change_30d": -3.0, "volume_24h": "9 B"}})
+        assert mr_propose(snap, portfolio()).action == "hold"
+
+    def test_thin_liquidity_excluded(self):
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_24h": 1.2, "percent_change_7d": -14.0,
+                                   "percent_change_30d": -20.0, "volume_24h": "100 K"}})
         assert mr_propose(snap, portfolio()).action == "hold"
 
 

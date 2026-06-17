@@ -12,6 +12,7 @@ class Proposal(BaseModel):
     token_symbol: Optional[str] = None
     size_pct: float = 0.0
     stop_loss_pct: Optional[float] = None
+    target_pct: Optional[float] = None  # take-profit; must clear the fee gate
     rationale: str                      # gate-by-gate audit trail, logged verbatim
 
 

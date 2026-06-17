@@ -62,3 +62,6 @@ replay.sqlite3-*
 *.sqlite3-wal
 *.sqlite-shm
 *.sqlite-wal
+
+# runtime logs
+*.log

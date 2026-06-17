@@ -1,8 +1,18 @@
-"""ARIA agent loop: fetch -> reason -> refine -> validate -> execute -> log.
+"""ARIA agent — decoupled two-speed loop.
+
+The FAST loop (every POLL_INTERVAL_SEC, no LLM) does all the time-critical work:
+  fetch quotes -> record -> manage exits (take-profit/trailing/stop) -> breaker ->
+  refresh macro posture (cached) -> scan deterministic entry gates.
+The LLM is event-driven: it is called ONLY when a gate surfaces an entry candidate,
+to APPROVE/REJECT it (the "LLM as judge" model). Exits and the circuit breaker are
+always mechanical and never wait on the model.
+
+Cadence is adaptive: poll fast while holding (exits need it), slower while flat
+(entry signals barely move in 30s) — this also keeps CMC credit burn in budget.
 
 Usage:
-  python -m aria.main --dry-run            # one full cycle, no execution
-  python -m aria.main --dry-run --loop     # continuous, CYCLE_INTERVAL_MIN apart
+  python -m aria.main --dry-run            # one fast tick, no execution
+  python -m aria.main --dry-run --loop     # continuous two-speed loop
   python -m aria.main --clear-halt         # human-only: release the drawdown halt
 """
 from __future__ import annotations
@@ -13,7 +23,9 @@ import logging
 from datetime import datetime, timezone
 
 from aria import brain, config, execution, safety, strategies
+from aria.execution import manager
 from aria.models import Decision, PortfolioState, hold_decision
+from aria.regime import RegimeCache, RiskPosture
 from aria.safety import compliance, window
 from aria.signals import client as signals
 from aria.state.db import Store
@@ -21,18 +33,12 @@ from aria.state.db import Store
 log = logging.getLogger("aria")
 
 
-async def load_portfolio(store: Store, snapshot=None) -> PortfolioState:
-    """live: reconcile against on-chain holdings via twak (never trust stale
-    local state). paper: mark the simulated book to the accumulated prices.
-    stub: synthetic flat portfolio for offline development."""
+async def load_portfolio(store: Store, prices: "dict[str, float] | None" = None) -> PortfolioState:
+    """live: reconcile against on-chain holdings via twak (never trust stale local
+    state). paper: mark the simulated book to the accumulated prices. stub: synthetic
+    flat portfolio for offline development."""
     if config.EXECUTION_MODE == "live":
-        prices: dict[str, float] = {}
-        if snapshot is not None:
-            for sym, q in snapshot.token_quotes.items():
-                price = q.get("price")
-                if isinstance(price, (int, float)):
-                    prices[sym] = float(price)
-        return await execution.reconcile_portfolio(store, prices)
+        return await execution.reconcile_portfolio(store, prices or {})
     if config.EXECUTION_MODE == "paper":
         from aria.execution import paper
         return paper.load_state(store)
@@ -47,146 +53,201 @@ async def load_portfolio(store: Store, snapshot=None) -> PortfolioState:
 
 async def maybe_heartbeat(store: Store, portfolio: PortfolioState, dry_run: bool,
                           cycle_id: str) -> None:
-    """Competition daily-trade rule. Outside LLM control; runs even while HALTED
-    and even on signal-failure cycles — going silent for a day is a rule violation."""
+    """Competition daily-trade rule. Outside LLM control; runs even while HALTED and
+    even on signal-failure ticks — going silent for a day is a rule violation."""
     allowed, _ = window.trading_allowed(store)
     if not allowed:
-        return  # the daily-trade rule only exists inside the competition window
+        return
     trades_today = store.trades_today_utc()
     if not compliance.heartbeat_due(trades_today=trades_today):
         return
     amount = compliance.heartbeat_amount_usd(portfolio.total_value_usd)
     result = await execution.compliance_roundtrip(amount, store, cycle_id, dry_run=dry_run)
-    if result.status != "executed":  # live legs log themselves; record skips/failures
+    if result.status != "executed":
         frm, to = compliance.COMPLIANCE_PAIR
         store.log_trade(cycle_id, "compliance", frm, to, status=str(result),
                         from_amount=f"{amount:.2f}")
     log.info("compliance heartbeat (%d trades today): %s", trades_today, result)
 
 
-async def run_cycle(store: Store, dry_run: bool, signal_failures: int = 0) -> int:
-    """Runs one cycle. Returns the consecutive-signal-failure count (0 on success)."""
-    # 0a. Halt latch — checked before anything else; a halted agent only heartbeats
+def _has_room(portfolio: PortfolioState) -> bool:
+    """Can we open another position? Need deployable stables and room under the
+    concurrent-position cap (each entry is already size-capped at MAX_POSITION_PCT)."""
+    if portfolio.stable_balance_usd < config.MIN_DEPLOYED_USD:
+        return False
+    return len(portfolio.positions) < config.MAX_CONCURRENT_POSITIONS
+
+
+def _entry_decision(candidate, mode: str, judgment, posture: RiskPosture) -> Decision:
+    """Fuse the deterministic candidate with the LLM's verdict + global posture into a
+    buy Decision. The judge may TRIM size, never raise it; posture scales it again."""
+    size = candidate.size_pct
+    if judgment.size_pct is not None:
+        size = min(size, judgment.size_pct)
+    size = min(size * posture.size_multiplier, config.MAX_POSITION_PCT)
+    regime = "trending" if mode == "narrative_rotation" else "ranging"
+    return Decision(
+        regime=regime, mode=mode, action="buy",
+        token_symbol=candidate.token_symbol, size_pct=size,
+        stop_loss_pct=candidate.stop_loss_pct, target_pct=candidate.target_pct,
+        confidence=judgment.confidence,
+        reasoning=f"{candidate.rationale} | judge: {judgment.reasoning}",
+    )
+
+
+async def _force_preservation(store: Store, portfolio: PortfolioState, dry_run: bool,
+                              reason: str) -> None:
+    from aria import alerts
+    await alerts.send(f"⚠️ {reason} — forcing preservation (close to stables) until signals return")
+    decision = Decision(regime="high_risk", mode="preservation", action="close_all",
+                        confidence=1.0, reasoning=reason)
+    store.log_decision(decision, safety_verdict="forced_preservation")
+    result = await execution.execute(decision, portfolio, store, dry_run=dry_run)
+    store.set_outcome(decision.cycle_id, str(result))
+    await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
+
+
+async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
+                    signal_failures: int = 0) -> "tuple[int, bool]":
+    """One fast-loop tick. Returns (consecutive-signal-failures, holding?)."""
+    # 0a. Halt latch — a halted agent only heartbeats.
     if safety.is_halted(store):
         portfolio = await load_portfolio(store)
-        decision = hold_decision(f"HALTED ({safety.halt_reason(store)}) — "
-                                 "run --clear-halt to resume")
+        decision = hold_decision(f"HALTED ({safety.halt_reason(store)}) — run --clear-halt to resume")
         store.log_decision(decision, safety_verdict="halted")
         log.warning("agent halted; holding. %s", safety.halt_reason(store))
         await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
-        return signal_failures
+        return signal_failures, bool(portfolio.positions)
 
-    # 1. Fetch signals — no signals means no trading (also prices reconciliation)
+    # 1. Poll quotes — ONE CMC credit. No quotes means no trading.
     try:
-        snapshot = await signals.fetch_snapshot()
+        quotes = await signals.fetch_quotes_only()
     except Exception as exc:  # noqa: BLE001 — fail safe, never crash the loop
         signal_failures += 1
-        log.error("signal fetch failed (%d consecutive): %s", signal_failures, exc)
+        log.error("quote fetch failed (%d consecutive): %s", signal_failures, exc)
         portfolio = await load_portfolio(store)
         if signal_failures >= config.SIGNAL_MAX_CONSECUTIVE_FAILURES:
-            from aria import alerts
-            await alerts.send(f"⚠️ {signal_failures} consecutive signal failures — "
-                              "forcing preservation (close to stables) until signals return")
-            # DESIGN.md policy: blind agent goes to stables until signals return
-            decision = Decision(
-                regime="high_risk", mode="preservation", action="close_all",
-                confidence=1.0,
-                reasoning=f"{signal_failures} consecutive signal failures — "
-                          f"forced preservation (close to stables) until signals return",
-            )
-            store.log_decision(decision, safety_verdict="forced_preservation")
-            result = await execution.execute(decision, portfolio, store, dry_run=dry_run)
-            store.set_outcome(decision.cycle_id, str(result))
+            await _force_preservation(store, portfolio, dry_run,
+                                      f"{signal_failures} consecutive signal failures")
         else:
-            decision = hold_decision(f"signal fetch failed: {exc}")
+            decision = hold_decision(f"quote fetch failed: {exc}")
             store.log_decision(decision, safety_verdict="auto_hold")
-        await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
-        return signal_failures
+            await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
+        return signal_failures, bool(portfolio.positions)
 
-    # 1a. Accumulate the price series (CMC sells no history — we build our own)
-    store.record_prices(snapshot.token_quotes)
+    # 1a. Accumulate the price series (CMC sells no history — we build our own).
+    store.record_prices(quotes)
+    prices = {s: q["price"] for s, q in quotes.items()
+              if isinstance(q.get("price"), (int, float))}
 
-    # 1b. Portfolio — on-chain truth (live), paper book, or stub — priced from snapshot
-    portfolio = await load_portfolio(store, snapshot)
+    # 1b. Portfolio — on-chain truth (live), paper book, or stub.
+    portfolio = await load_portfolio(store, prices)
 
-    # 1c. Competition window / operator override — outside it, observe but never trade
+    # 1b2. MECHANICAL EXITS FIRST — take-profit / trailing / stop. No LLM, ever.
+    if portfolio.positions:
+        exits = await manager.manage_open_positions(portfolio, prices, store, dry_run)
+        if exits:
+            portfolio = await load_portfolio(store, prices)
+
+    # 1c. Competition window / operator override.
     allowed, why = window.trading_allowed(store)
     if not allowed:
         decision = hold_decision(f"trading gated: {why}", regime="high_risk")
-        store.log_decision(decision, signals_json=snapshot.model_dump_json(),
-                           safety_verdict="window_closed")
+        store.log_decision(decision, safety_verdict="window_closed")
         store.snapshot_portfolio(portfolio)
-        log.info("cycle %s | window closed: %s", decision.cycle_id[:8], why)
-        return 0
+        log.info("tick %s | window closed: %s", decision.cycle_id[:8], why)
+        return 0, bool(portfolio.positions)
 
-    # 0b. Circuit breaker — brain is NOT consulted on a breach
+    # 0b. Circuit breaker — mechanical, brain NOT consulted on a breach.
     if safety.check_drawdown(portfolio):
-        safety.trigger_halt(
-            store, f"drawdown {portfolio.drawdown_pct:.2f}% >= {config.HALT_DRAWDOWN_PCT}%"
-        )
-        decision = Decision(
-            regime="high_risk", mode="preservation", action="close_all",
-            confidence=1.0,
-            reasoning=f"CIRCUIT BREAKER: drawdown {portfolio.drawdown_pct:.2f}% — "
-                      "closing everything, halting until manual restart",
-        )
+        safety.trigger_halt(store, f"drawdown {portfolio.drawdown_pct:.2f}% >= {config.HALT_DRAWDOWN_PCT}%")
+        decision = Decision(regime="high_risk", mode="preservation", action="close_all",
+                            confidence=1.0,
+                            reasoning=f"CIRCUIT BREAKER: drawdown {portfolio.drawdown_pct:.2f}% — "
+                                      "closing everything, halting until manual restart")
         store.log_decision(decision, safety_verdict="halt_triggered")
         result = await execution.execute(decision, portfolio, store, dry_run=dry_run)
         store.set_outcome(decision.cycle_id, str(result))
         await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
-        return signal_failures
+        return signal_failures, bool(portfolio.positions)
 
-    # 2. Reason — malformed/broken brain output becomes a hold
+    # 2. Refresh the cached macro read + global posture (slow cadence) and splice in
+    #    fresh quotes so the entry judge sees current prices on a recent macro picture.
+    refreshed = await regime.refresh_if_stale()
+    regime.update_quotes(quotes)
+    posture = regime.posture
+
+    # 3. ENTRY HUNT — deterministic gates, then the event-driven LLM judge.
+    decision = await _hunt_entry(store, regime, portfolio, posture, refreshed)
+
+    # 4. Validate (safety has veto power over everything) + execute.
     try:
-        decision = await brain.decide(snapshot, portfolio, history=store.recent_decisions(5))
-    except Exception as exc:  # noqa: BLE001
-        log.error("brain failed: %s", exc)
-        decision = hold_decision(f"brain failure: {exc}")
-
-    # 2b. Strategy refinement — the mode's gates concretize (or reject) the idea
-    try:
-        decision = await strategies.refine(decision, snapshot, portfolio)
-    except Exception as exc:  # noqa: BLE001
-        log.error("strategy refinement failed: %s", exc)
-        decision = hold_decision(f"strategy refinement failed: {exc}", regime=decision.regime)
-
-    # refinement may have enriched the snapshot with candidate prices — capture them
-    # so a paper/live buy can price its chosen token from this cycle's data
-    store.record_prices(snapshot.token_quotes)
-
-    # 3. Validate — safety has veto power over everything
-    try:
-        safety.validate(decision, portfolio)  # halt latch already handled at step 0a
-        verdict = "dry_run" if dry_run else "approved"
+        safety.validate(decision, portfolio)
+        if decision.action == "buy":
+            verdict = "dry_run" if dry_run else "approved"
+        else:
+            verdict = "no_entry"
     except safety.Veto as veto:
-        verdict = f"vetoed:{veto}"
         log.warning("VETO %s", veto)
         decision = hold_decision(f"vetoed: {veto}", regime=decision.regime)
+        verdict = f"vetoed:{veto}"
 
-    snapshot_json = snapshot.model_dump_json()
-    store.log_decision(decision, signals_json=snapshot_json, safety_verdict=verdict)
+    store.log_decision(decision, safety_verdict=verdict)
     store.snapshot_portfolio(portfolio)
-
-    # 4. Execute
     result = await execution.execute(decision, portfolio, store, dry_run=dry_run)
     store.set_outcome(decision.cycle_id, str(result))
 
-    # 5. Compliance heartbeat (competition rule, independent of strategy)
+    # 5. Compliance heartbeat (competition rule, independent of strategy).
     await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
 
-    log.info(
-        "cycle %s | regime=%s mode=%s action=%s conf=%.2f | %s | %s",
-        decision.cycle_id[:8], decision.regime, decision.mode,
-        decision.action, decision.confidence, verdict, result,
-    )
-    log.info("reasoning: %s", decision.reasoning)
-    return 0  # success resets the consecutive-failure counter
+    log.info("tick %s | posture=%s mode=%s action=%s conf=%.2f | %s | %s",
+             decision.cycle_id[:8], posture.label, decision.mode, decision.action,
+             decision.confidence, verdict, result)
+
+    holding = bool(portfolio.positions) or (decision.action == "buy" and result.status == "executed")
+    return 0, holding
+
+
+async def _hunt_entry(store: Store, regime: RegimeCache, portfolio: PortfolioState,
+                      posture: RiskPosture, refreshed: bool) -> Decision:
+    """Deterministic entry scan + event-driven LLM judgment. Returns a buy Decision
+    only when a gate found a setup AND the LLM approved it; otherwise a logged hold."""
+    if not posture.allow_new_entries:
+        return hold_decision(f"no new entries (posture={posture.label}: {posture.reason})",
+                             regime="ranging")
+    if not _has_room(portfolio):
+        return hold_decision("portfolio full — no room for a new entry", regime="ranging")
+    if regime.snapshot is None:
+        return hold_decision("no macro read yet — deferring entries", regime="ranging")
+
+    snap = regime.snapshot
+    candidate, mode = await strategies.scan_entries(
+        snap, portfolio, allow_narrative=(refreshed and posture.allow_narrative))
+    if candidate.action != "buy" or not candidate.token_symbol:
+        return hold_decision(candidate.rationale, regime="ranging")
+    if store.in_cooldown(candidate.token_symbol):
+        return hold_decision(f"{candidate.token_symbol} in re-entry cooldown — avoiding churn",
+                             regime="ranging")
+
+    # EVENT-DRIVEN LLM CALL — only now that a real candidate exists.
+    judgment = await brain.judge_entry(candidate, snap, portfolio, posture)
+    if judgment.approve and judgment.confidence >= config.CONFIDENCE_FLOOR:
+        return _entry_decision(candidate, mode or "mean_reversion", judgment, posture)
+    return hold_decision(f"judge rejected {candidate.token_symbol} "
+                         f"(conf {judgment.confidence:.2f}): {judgment.reasoning}", regime="ranging")
+
+
+async def run_cycle(store: Store, dry_run: bool, signal_failures: int = 0) -> int:
+    """Back-compat single-tick entry point (used by tests and any external caller).
+    Drives one fast_tick with a fresh macro cache so posture is always current."""
+    failures, _holding = await fast_tick(store, RegimeCache(), dry_run, signal_failures)
+    return failures
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser(prog="aria")
     parser.add_argument("--dry-run", action="store_true", help="never execute trades")
-    parser.add_argument("--loop", action="store_true", help="run continuously")
+    parser.add_argument("--loop", action="store_true", help="run the continuous two-speed loop")
     parser.add_argument("--clear-halt", action="store_true",
                         help="human-only: release the drawdown halt and exit")
     args = parser.parse_args()
@@ -202,18 +263,23 @@ async def main() -> None:
             print("agent was not halted.")
         return
 
-    log.info("ARIA starting | network=%s brain=%s/%s dry_run=%s db=%s",
-             config.NETWORK, config.BRAIN_MODE, config.BRAIN_MODEL,
-             args.dry_run, config.DB_PATH)
+    log.info("ARIA starting | network=%s brain=%s/%s exec=%s dry_run=%s | poll=%.0fs/%.0fs macro=%.0fs",
+             config.NETWORK, config.BRAIN_MODE, config.BRAIN_MODEL, config.EXECUTION_MODE,
+             args.dry_run, config.POLL_INTERVAL_SEC, config.POLL_INTERVAL_FLAT_SEC,
+             config.MACRO_REFRESH_SEC)
     if safety.is_halted(store):
         log.warning("starting in HALTED state: %s", safety.halt_reason(store))
 
+    regime = RegimeCache()
     failures = 0
     while True:
-        failures = await run_cycle(store, dry_run=args.dry_run, signal_failures=failures)
+        failures, holding = await fast_tick(store, regime, dry_run=args.dry_run,
+                                            signal_failures=failures)
         if not args.loop:
             break
-        await asyncio.sleep(config.CYCLE_INTERVAL_MIN * 60)
+        # Adaptive cadence: tight while holding (exit reaction), relaxed while flat.
+        interval = config.POLL_INTERVAL_SEC if holding else config.POLL_INTERVAL_FLAT_SEC
+        await asyncio.sleep(interval)
 
 
 if __name__ == "__main__":

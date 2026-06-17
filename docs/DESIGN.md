@@ -58,7 +58,17 @@ ARIA classifies the market regime BEFORE choosing a strategy, then routes to one
 2. **Mean Reversion** (ranging) — trade blue-chip range oscillations with tight stops
 3. **Capital Preservation** (high-risk/volatile) — close positions, hold stablecoins, do nothing
 
-An LLM (Claude Sonnet via Anthropic API) makes the regime/strategy routing decision each cycle. Every decision is logged with its full reasoning chain.
+### Execution model: two-speed loop (LLM as judge)
+
+ARIA runs a **decoupled two-speed loop** (the Binacci-style pattern, adapted to keep our LLM edge):
+
+- **Fast deterministic loop** (`POLL_INTERVAL_SEC`, default 30s while holding / `POLL_INTERVAL_FLAT_SEC` 90s while flat — adaptive). No LLM. Every tick: poll quotes (ONE CMC credit, batched) → record price history → load portfolio → **manage open positions (mechanical exits: take-profit / stepped trailing / stop-loss)** → circuit breaker → run the deterministic entry gates. Exits and the breaker are *always* mechanical and never wait on the model — de-risking must be instant.
+- **Cached macro read** (`MACRO_REFRESH_SEC`, default 10 min). The expensive multi-call fetch (Fear & Greed, BTC dominance, altcoin season, narratives) refreshes on a slow cadence and is cached. From it we derive a coarse, deterministic **global risk posture** (`aria/regime.py`): `risk_off` (no new entries — skip the LLM entirely), `cautious` (mean-reversion only, half size), `risk_on`/`neutral` (both plays, full size).
+- **Event-driven LLM judge.** The LLM is **not** in the loop. It is called only when a deterministic gate surfaces an entry *candidate*, to **APPROVE or REJECT** that single setup on macro-regime grounds (it cannot pick a token or invent a trade; it may only trim size). This is cheaper (often zero calls in a quiet hour), more responsive (fires the moment a setup appears), and more robust (the model can only bless real gate signals, never hallucinate a position). See `aria/brain/judge_entry` + `JUDGE_SYSTEM_PROMPT`.
+
+CMC credit note: quotes are 1 credit/poll regardless of universe size; 30s continuous exceeds the free 15k/month tier over a full week, so the live week uses adaptive cadence + (if needed) a paid CMC plan or `POLL_INTERVAL_SEC=60`.
+
+An LLM (Claude via the Anthropic API) is the per-entry judge and logs its full reasoning chain. The deterministic gates pick the token; the LLM vetoes; the safety layer re-validates everything independently.
 
 ## ⚠️ CRITICAL: Unknown vendor APIs — do not guess
 
@@ -157,7 +167,14 @@ CYCLE_INTERVAL_MIN = 30          # decision loop frequency (reasoning cadence �
 MAX_DRAWDOWN_PCT = 30.0          # official DQ gate per rules' example (~30%)
 HALT_DRAWDOWN_PCT = 20.0         # our circuit breaker fires well before the gate
 MAX_POSITION_PCT = 15.0          # max % of portfolio in one trade
-CONFIDENCE_FLOOR = 0.6           # LLM confidence below this → hold
+CONFIDENCE_FLOOR = 0.6           # LLM judge confidence below this → reject entry
+MAX_CONCURRENT_POSITIONS = 4     # cap on simultaneously open positions
+
+# Two-speed loop cadence (see "Execution model")
+POLL_INTERVAL_SEC = 30           # fast loop while holding (tight exit management)
+POLL_INTERVAL_FLAT_SEC = 90      # fast loop while flat (entry signals move slowly)
+MACRO_REFRESH_SEC = 600          # cached macro/regime read cadence (10 min)
+# CYCLE_INTERVAL_MIN retained only for back-compat (the old single-cadence knob)
 
 # Rule compliance (mandatory — lives in safety/execution, NOT under LLM control)
 MIN_TRADES_PER_DAY = 1           # rules: 1 trade/day, 7 over the week

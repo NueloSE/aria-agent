@@ -52,6 +52,17 @@ def clear_halt(store: Store) -> None:
     store.clear_state(HALT_KEY)
 
 
+def trailing_stop_for(peak_gain_pct: float) -> "float | None":
+    """Stepped trailing stop (Binacci pattern): below the trigger, no stop; once
+    peak gain crosses the trigger, lock initial_sl and raise it step-wise as the
+    peak climbs. Returns the stop level in % gain-from-entry, or None if unarmed.
+    A position that arms its trailing stop almost cannot close red."""
+    if peak_gain_pct < config.TRAIL_TRIGGER_PCT:
+        return None
+    steps = int((peak_gain_pct - config.TRAIL_TRIGGER_PCT) / config.TRAIL_STEP_PCT)
+    return config.TRAIL_INITIAL_SL_PCT + steps * config.TRAIL_STEP_PCT
+
+
 def check_drawdown(portfolio: PortfolioState) -> bool:
     """True if the halt threshold is breached (caller triggers the latch).
     Epsilon guards the boundary: (1 - 80/100)*100 is 19.999999999999996 in IEEE-754 —
@@ -84,6 +95,14 @@ def validate(decision: Decision, portfolio: PortfolioState, halted: bool = False
             raise Veto("buy without a stop_loss_pct")
         if decision.size_pct <= 0:
             raise Veto("buy with size_pct <= 0")
+        # Fee-aware min-edge gate: a target that can't clear the round-trip cost
+        # by MIN_EDGE_MULTIPLE is a guaranteed loser. Reject it.
+        min_target = config.round_trip_cost_pct() * config.MIN_EDGE_MULTIPLE
+        if decision.target_pct is None or decision.target_pct < min_target:
+            raise Veto(
+                f"target {decision.target_pct}% below fee-gate minimum {min_target:.2f}% "
+                f"({config.MIN_EDGE_MULTIPLE}x round-trip cost {config.round_trip_cost_pct():.2f}%)"
+            )
         if check_drawdown(portfolio):
             raise Veto(
                 f"drawdown {portfolio.drawdown_pct:.2f}% >= halt threshold "

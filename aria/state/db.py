@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS paper_positions (
     amount          REAL NOT NULL,
     entry_price_usd REAL NOT NULL,
     stop_loss_pct   REAL,
+    target_pct      REAL,
+    peak_gain_pct   REAL NOT NULL DEFAULT 0,
     opened_at       TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS portfolio_snapshots (
@@ -179,6 +181,19 @@ class Store:
         self.conn.execute("DELETE FROM agent_state WHERE key = ?", (key,))
         self.conn.commit()
 
+    def set_cooldown(self, symbol: str, until_iso: str) -> None:
+        self.set_state(f"cooldown:{symbol.upper()}", until_iso)
+
+    def in_cooldown(self, symbol: str) -> bool:
+        v = self.get_state(f"cooldown:{symbol.upper()}")
+        if not v:
+            return False
+        from datetime import datetime, timezone
+        try:
+            return datetime.fromisoformat(v) > datetime.now(timezone.utc)
+        except ValueError:
+            return False
+
     # --- Price accumulation -------------------------------------------------
 
     def record_prices(self, quotes: dict, ts: Optional[str] = None) -> None:
@@ -233,20 +248,31 @@ class Store:
 
     def paper_positions(self) -> list[dict]:
         rows = self.conn.execute(
-            "SELECT symbol, amount, entry_price_usd, stop_loss_pct, opened_at"
-            " FROM paper_positions"
+            "SELECT symbol, amount, entry_price_usd, stop_loss_pct, target_pct,"
+            " peak_gain_pct, opened_at FROM paper_positions"
         ).fetchall()
-        keys = ("symbol", "amount", "entry_price_usd", "stop_loss_pct", "opened_at")
+        keys = ("symbol", "amount", "entry_price_usd", "stop_loss_pct", "target_pct",
+                "peak_gain_pct", "opened_at")
         return [dict(zip(keys, r)) for r in rows]
 
     def paper_position_set(self, symbol: str, amount: float, entry_price_usd: float,
-                           stop_loss_pct: Optional[float], opened_at: str) -> None:
+                           stop_loss_pct: Optional[float], opened_at: str,
+                           target_pct: Optional[float] = None,
+                           peak_gain_pct: float = 0.0) -> None:
         self.conn.execute(
             "INSERT INTO paper_positions (symbol, amount, entry_price_usd, stop_loss_pct,"
-            " opened_at) VALUES (?,?,?,?,?)"
+            " target_pct, peak_gain_pct, opened_at) VALUES (?,?,?,?,?,?,?)"
             " ON CONFLICT(symbol) DO UPDATE SET amount=excluded.amount,"
-            " entry_price_usd=excluded.entry_price_usd, stop_loss_pct=excluded.stop_loss_pct",
-            (symbol, amount, entry_price_usd, stop_loss_pct, opened_at),
+            " entry_price_usd=excluded.entry_price_usd, stop_loss_pct=excluded.stop_loss_pct,"
+            " target_pct=excluded.target_pct, peak_gain_pct=excluded.peak_gain_pct",
+            (symbol, amount, entry_price_usd, stop_loss_pct, target_pct, peak_gain_pct, opened_at),
+        )
+        self.conn.commit()
+
+    def paper_position_peak(self, symbol: str, peak_gain_pct: float) -> None:
+        self.conn.execute(
+            "UPDATE paper_positions SET peak_gain_pct=? WHERE symbol=?",
+            (peak_gain_pct, symbol),
         )
         self.conn.commit()
 

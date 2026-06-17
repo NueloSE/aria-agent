@@ -95,5 +95,6 @@ def propose(
         token_symbol=token,
         size_pct=min(config.MAX_POSITION_PCT, config.NR_MAX_NARRATIVE_ALLOCATION),
         stop_loss_pct=config.NR_STOP_LOSS_PCT,
+        target_pct=config.NR_TARGET_PCT,
         rationale="; ".join(trail),
     )

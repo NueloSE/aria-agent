@@ -53,7 +53,8 @@ def load_state(store: Store) -> PortfolioState:
         positions_value += p["amount"] * price
         positions.append(Position(
             token_symbol=sym, amount=p["amount"], entry_price_usd=p["entry_price_usd"],
-            stop_loss_pct=p["stop_loss_pct"],
+            stop_loss_pct=p["stop_loss_pct"], target_pct=p.get("target_pct"),
+            peak_gain_pct=p.get("peak_gain_pct") or 0.0,
             opened_at=datetime.fromisoformat(p["opened_at"]),
         ))
 
@@ -99,7 +100,8 @@ def simulate(store: Store, decision: Decision, total_value_usd: float):
         net = usd_in - _cost(usd_in)
         amount = net / price
         store.paper_book_update(stable - usd_in, book["peak_value_usd"])
-        store.paper_position_set(sym, amount, price, decision.stop_loss_pct, now)
+        store.paper_position_set(sym, amount, price, decision.stop_loss_pct, now,
+                                 target_pct=decision.target_pct, peak_gain_pct=0.0)
         store.log_trade(decision.cycle_id, "strategy", STABLE, sym, status="confirmed",
                         from_amount=f"{usd_in:.2f}", to_amount=f"{amount:.6f}")
         log.info("PAPER buy %s: $%.2f -> %.6f @ $%.4f (cost $%.3f)",

@@ -11,6 +11,7 @@ Schemas: docs/vendor/cmc-agent-hub/observed-tools.json
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -29,6 +30,14 @@ class SignalError(Exception):
     pass
 
 
+def _is_transient(detail: str) -> bool:
+    """A CMC tool-level error worth retrying (server-side 5xx / rate limit / timeout),
+    as opposed to a genuine bad request we should not hammer."""
+    d = detail.lower()
+    return any(s in d for s in ("internal server error", '"code":500', "'code': 500",
+                                "502", "503", "504", "429", "timeout", "temporarily"))
+
+
 class CMCClient:
     def __init__(self, api_key: Optional[str] = None, url: Optional[str] = None):
         self._headers = {
@@ -42,6 +51,9 @@ class CMCClient:
         self._rpc_id = 0
         self.calls_made = 0
         self._id_cache: dict[str, int] = self._load_id_cache()
+        # Symbols CMC can't resolve (e.g. ROSE/ZETA/BRETT) — remembered for this
+        # process so the fast loop doesn't re-search them (a credit leak) every tick.
+        self._unresolved: set[str] = set()
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -81,32 +93,47 @@ class CMCClient:
         self._initialized = True
 
     async def call(self, tool: str, arguments: Optional[dict] = None) -> Any:
-        """Call a tool; return the inner (double-decoded) payload."""
-        await self._ensure_initialized()
-        self._rpc_id += 1
-        try:
-            msg = await self._post({
-                "jsonrpc": "2.0", "id": self._rpc_id, "method": "tools/call",
-                "params": {"name": tool, "arguments": arguments or {}},
-            })
-        except httpx.HTTPError as exc:
-            raise SignalError(f"{tool}: transport error: {exc}") from exc
-        self.calls_made += 1
-        if not msg:
-            raise SignalError(f"{tool}: empty response")
-        if "error" in msg:
-            raise SignalError(f"{tool}: rpc error: {msg['error']}")
-        result = msg.get("result", {})
-        if result.get("isError"):
-            raise SignalError(f"{tool}: tool error: {str(result)[:300]}")
-        try:
-            text = result["content"][0]["text"]
-        except (KeyError, IndexError) as exc:
-            raise SignalError(f"{tool}: unexpected envelope: {str(result)[:300]}") from exc
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            return text  # a few tools may return plain text
+        """Call a tool; return the inner (double-decoded) payload.
+
+        Transient failures (transport blips, CMC 5xx) are retried in-place with
+        backoff so a one-off hiccup never registers as a signal failure. Non-transient
+        errors (rpc errors, real tool errors, malformed envelopes) raise immediately."""
+        last_exc: Optional[SignalError] = None
+        for attempt in range(max(1, config.SIGNAL_RETRY_ATTEMPTS)):
+            if attempt:
+                await asyncio.sleep(config.SIGNAL_RETRY_BACKOFF_S * attempt)
+            try:
+                await self._ensure_initialized()  # idempotent; retried if it blipped
+                self._rpc_id += 1
+                msg = await self._post({
+                    "jsonrpc": "2.0", "id": self._rpc_id, "method": "tools/call",
+                    "params": {"name": tool, "arguments": arguments or {}},
+                })
+            except httpx.HTTPError as exc:
+                last_exc = SignalError(f"{tool}: transport error: {exc}")
+                continue  # transient — retry
+            self.calls_made += 1
+            if not msg:
+                last_exc = SignalError(f"{tool}: empty response")
+                continue  # transient — retry
+            if "error" in msg:
+                raise SignalError(f"{tool}: rpc error: {msg['error']}")
+            result = msg.get("result", {})
+            if result.get("isError"):
+                detail = str(result)
+                if _is_transient(detail):
+                    last_exc = SignalError(f"{tool}: tool error: {detail[:300]}")
+                    continue  # CMC 5xx — retry
+                raise SignalError(f"{tool}: tool error: {detail[:300]}")
+            try:
+                text = result["content"][0]["text"]
+            except (KeyError, IndexError) as exc:
+                raise SignalError(f"{tool}: unexpected envelope: {str(result)[:300]}") from exc
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                return text  # a few tools may return plain text
+        raise last_exc or SignalError(f"{tool}: failed after retries")
 
     # --- Symbol -> CMC id resolution (cached, write-through) ----------------
 
@@ -121,6 +148,8 @@ class CMCClient:
     async def resolve_id(self, symbol: str) -> Optional[int]:
         if symbol in self._id_cache:
             return self._id_cache[symbol]
+        if symbol in self._unresolved:
+            return None  # known-unresolvable — don't re-spend a search credit every tick
         # live API enforces limit <= 5 (observed 2026-06-12)
         results = await self.call("search_cryptos", {"query": symbol, "limit": 5})
         if isinstance(results, list):
@@ -130,7 +159,8 @@ class CMCClient:
                 self._id_cache[symbol] = int(best["id"])
                 self._save_id_cache()
                 return self._id_cache[symbol]
-        log.warning("could not resolve CMC id for %s", symbol)
+        self._unresolved.add(symbol)
+        log.warning("could not resolve CMC id for %s (won't retry this session)", symbol)
         return None
 
     # --- One method per signal ----------------------------------------------

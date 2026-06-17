@@ -102,7 +102,13 @@ async def run() -> None:
         async def fake_fetch():
             return snap
 
-        main_mod.signals.fetch_snapshot = fake_fetch  # type: ignore[assignment]
+        async def fake_quotes():
+            return snap.token_quotes
+
+        # The two-speed loop reads quotes (fast) and macro (cached) separately —
+        # inject the scripted step into BOTH so the regime + entry gates see it.
+        main_mod.signals.fetch_snapshot = fake_fetch        # type: ignore[assignment]
+        main_mod.signals.fetch_quotes_only = fake_quotes    # type: ignore[assignment]
         await main_mod.run_cycle(store, dry_run=False)
 
         book = store.paper_book()

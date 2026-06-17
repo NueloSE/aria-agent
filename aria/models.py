@@ -24,6 +24,7 @@ class Decision(BaseModel):
     token_symbol: Optional[str] = None   # required for buy/sell; must pass universe gates
     size_pct: float = Field(0.0, ge=0.0)
     stop_loss_pct: Optional[float] = None  # required for buy actions
+    target_pct: Optional[float] = None     # take-profit; set by the strategy, fee-gated
     confidence: float = Field(..., ge=0.0, le=1.0)
     reasoning: str
 
@@ -51,6 +52,17 @@ class BrainOutput(BaseModel):
         return Decision(**self.model_dump())
 
 
+class EntryJudgment(BaseModel):
+    """The LLM's verdict on ONE deterministic entry candidate (the 'LLM as judge'
+    model). The model cannot pick a token or invent a trade — a gate already found a
+    real setup; the LLM only approves/rejects it on macro-regime grounds and may trim
+    size. Malformed output -> treated as a reject (fail-safe), never crashes the loop."""
+    approve: bool
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    size_pct: Optional[float] = Field(None, ge=0.0)  # optional trim; None = use the gate's size
+    reasoning: str
+
+
 def hold_decision(reason: str, regime: Regime = "high_risk") -> Decision:
     """Fail-safe default: anything ambiguous or broken becomes a logged hold."""
     return Decision(
@@ -67,7 +79,14 @@ class Position(BaseModel):
     amount: float
     entry_price_usd: float
     stop_loss_pct: Optional[float] = None
+    target_pct: Optional[float] = None     # take-profit target
+    peak_gain_pct: float = 0.0             # high-water mark of unrealized gain (for trailing)
     opened_at: datetime
+
+    def gain_pct(self, price: float) -> float:
+        if self.entry_price_usd <= 0:
+            return 0.0
+        return (price / self.entry_price_usd - 1.0) * 100.0
 
 
 class PortfolioState(BaseModel):

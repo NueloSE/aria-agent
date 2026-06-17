@@ -10,7 +10,7 @@ import logging
 from aria import config
 from aria.models import Decision, MarketSnapshot, PortfolioState
 from aria.strategies import mean_reversion, narrative_rotation, preservation
-from aria.strategies.base import Proposal
+from aria.strategies.base import Proposal, hold_proposal
 
 log = logging.getLogger("aria.strategies")
 
@@ -25,6 +25,7 @@ def _merge(decision: Decision, proposal: Proposal) -> Decision:
         if decision.action == "buy" and proposal.action == "buy"
         else proposal.size_pct,
         stop_loss_pct=proposal.stop_loss_pct,
+        target_pct=proposal.target_pct,
         confidence=decision.confidence,
         reasoning=f"{decision.reasoning} | strategy: {proposal.rationale}",
     )
@@ -46,6 +47,32 @@ async def _enrich_candidate_quotes(snapshot: MarketSnapshot) -> None:
         log.info("enriched quotes for candidates: %s", sorted(extra.keys()))
 
 
+async def scan_entries(
+    snapshot: MarketSnapshot,
+    portfolio: PortfolioState,
+    allow_narrative: bool = False,
+) -> "tuple[Proposal, str | None]":
+    """Run the deterministic entry gates to surface ONE candidate (or hold).
+
+    This is the fast loop's entry hunter — pure gate logic, NO LLM. Mean-reversion
+    (counter-trend, works in any regime, zero extra credits) is scanned every tick;
+    narrative-rotation (needs a trend, costs candidate-quote enrichment) only when the
+    caller permits it (typically right after a macro refresh). Returns the candidate
+    Proposal and which mode produced it ('mean_reversion' | 'narrative_rotation' | None)."""
+    mr = mean_reversion.propose(snapshot, portfolio)
+    if mr.action == "buy":
+        return mr, "mean_reversion"
+
+    if allow_narrative:
+        await _enrich_candidate_quotes(snapshot)
+        nr = narrative_rotation.propose(snapshot, portfolio)
+        if nr.action == "buy":
+            return nr, "narrative_rotation"
+
+    return hold_proposal("no entry setup (scanned mean-reversion"
+                         + (" + narrative-rotation" if allow_narrative else "") + ")"), None
+
+
 async def refine(
     decision: Decision, snapshot: MarketSnapshot, portfolio: PortfolioState
 ) -> Decision:
@@ -65,6 +92,8 @@ async def refine(
         return _merge(decision, preservation.propose(portfolio))
 
     if decision.mode == "mean_reversion":
-        return _merge(decision, mean_reversion.propose(snapshot, portfolio))
+        if decision.action == "buy":
+            return _merge(decision, mean_reversion.propose(snapshot, portfolio))
+        return decision  # sell/close_all/hold pass through
 
     return decision
