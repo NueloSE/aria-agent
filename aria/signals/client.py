@@ -196,6 +196,21 @@ async def fetch_quotes_only() -> dict[str, dict]:
     }
 
 
+# --- Per-token technical analysis (confirmation on the single top candidate) -----
+
+async def fetch_token_ta(symbol: str) -> dict:
+    """Real per-token TA (RSI / MACD / Fibonacci / pivots) for ONE candidate — 1 credit.
+    Live only; fixtures mode returns {} so confirmation is skipped (entry proceeds)."""
+    if config.SIGNALS_MODE == "fixtures" or not symbol:
+        return {}
+    c = _get_client()
+    cid = await c.resolve_id(symbol)
+    if cid is None:
+        return {}
+    ta = await c.token_technical_analysis(cid)
+    return ta if isinstance(ta, dict) else {}
+
+
 # --- Entry point ---------------------------------------------------------------
 
 async def fetch_snapshot() -> MarketSnapshot:

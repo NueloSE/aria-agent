@@ -33,6 +33,34 @@ class TestReads:
         assert len(rows) == 1
         assert rows[0]["reasoning"] == "seed decision"
 
+    def test_positions_empty_ok(self, client):
+        assert client.get("/api/positions").json() == []
+
+    def test_positions_marked_with_pnl(self, client):
+        from datetime import datetime, timezone
+        s = Store(config.DB_PATH)
+        now = datetime.now(timezone.utc).isoformat()
+        s.paper_position_set("CAKE", 10.0, 2.0, 5.0, now, target_pct=7.0, peak_gain_pct=1.0)
+        s.record_prices({"CAKE": {"price": 2.2}})  # +10%
+        pos = client.get("/api/positions").json()
+        assert len(pos) == 1
+        assert pos[0]["symbol"] == "CAKE"
+        assert pos[0]["unrealized_pct"] == pytest.approx(10.0)
+        assert pos[0]["value_usd"] == pytest.approx(22.0)
+
+    def test_performance_realized_roundtrip(self, client):
+        s = Store(config.DB_PATH)
+        # a winning round-trip: $10 in -> $11 out, and a losing one: $10 -> $9.50
+        s.log_trade("c1", "strategy", "USDT", "CAKE", "confirmed", from_amount="10", to_amount="5")
+        s.log_trade("c2", "strategy", "CAKE", "USDT", "confirmed", from_amount="5", to_amount="11")
+        s.log_trade("c3", "strategy", "USDT", "UNI", "confirmed", from_amount="10", to_amount="2")
+        s.log_trade("c4", "strategy", "UNI", "USDT", "confirmed", from_amount="2", to_amount="9.5")
+        perf = client.get("/api/performance").json()
+        assert perf["round_trips_total"] == 2
+        assert perf["wins"] == 1 and perf["losses"] == 1
+        assert perf["realized_pnl_usd"] == pytest.approx(0.5)  # +1.0 and -0.5
+        assert perf["win_rate_pct"] == pytest.approx(50.0)
+
     def test_signals_404_when_absent(self, client):
         cid = client.get("/api/decisions").json()[0]["cycle_id"]
         assert client.get(f"/api/decisions/{cid}/signals").status_code == 404

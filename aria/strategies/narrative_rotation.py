@@ -36,8 +36,10 @@ def propose(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     preferred_token: Optional[str] = None,
+    skip: "set[str] | None" = None,
 ) -> Proposal:
     trail: list[str] = []
+    skip = skip or set()
 
     # Gate 1: pick the best narrative with real momentum
     narrative = None
@@ -60,6 +62,9 @@ def propose(
             continue
         if sym in _NON_TARGETS:
             trail.append(f"{sym}: stable, not a rotation target")
+            continue
+        if sym in skip:
+            trail.append(f"{sym}: in cooldown (recently exited/rejected)")
             continue
         quote = snapshot.token_quotes.get(sym)
         if not quote:

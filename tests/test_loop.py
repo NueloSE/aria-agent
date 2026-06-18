@@ -107,22 +107,31 @@ class TestEventDrivenJudge:
         assert not calls
         assert last_decision(store)[0] == "hold"
 
-    async def test_cooldown_blocks_entry_without_judge(self, store, monkeypatch):
+    async def test_cooled_token_excluded_via_skip_set(self, store, monkeypatch):
+        """A cooled-down token is passed in the gate's skip set (enforced at the gate,
+        so it can fall through to the next-best candidate)."""
         from datetime import timedelta
         store.set_cooldown("LDO", (NOW + timedelta(minutes=60)).isoformat())
-        async def scan(*a, **k):
-            return candidate(), "mean_reversion"
+        seen = {}
+        async def scan(snapshot, portfolio, allow_narrative=False, skip=None):
+            seen["skip"] = skip
+            return hold_proposal("excluded"), None  # gate finds nothing else
         monkeypatch.setattr(main_mod.strategies, "scan_entries", scan)
-        calls = []
-        async def spy(*a, **k):
-            calls.append(1)
-            raise AssertionError("judge must not run for a token in cooldown")
-        monkeypatch.setattr(main_mod.brain, "judge_entry", spy)
-
         await main_mod.fast_tick(store, fresh_cache(fg=55), dry_run=True)
-        assert not calls
-        assert "cooldown" in store.conn.execute(
-            "SELECT reasoning FROM decisions ORDER BY timestamp DESC LIMIT 1").fetchone()[0]
+        assert "LDO" in (seen["skip"] or set())
+
+    async def test_judge_rejection_sets_15min_cooldown(self, store, monkeypatch):
+        async def scan(*a, **k):
+            return candidate(), "mean_reversion"   # LDO candidate
+        monkeypatch.setattr(main_mod.strategies, "scan_entries", scan)
+        async def reject(*a, **k):
+            from aria.models import EntryJudgment
+            return EntryJudgment(approve=False, confidence=0.3, reasoning="dead-cat")
+        monkeypatch.setattr(main_mod.brain, "judge_entry", reject)
+
+        assert not store.in_cooldown("LDO")
+        await main_mod.fast_tick(store, fresh_cache(fg=55), dry_run=True)
+        assert store.in_cooldown("LDO")  # rejection cooled it down
 
 
 class TestAdaptiveCadence:

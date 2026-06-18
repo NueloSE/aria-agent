@@ -182,17 +182,41 @@ class Store:
         self.conn.commit()
 
     def set_cooldown(self, symbol: str, until_iso: str) -> None:
+        # Never SHORTEN an existing cooldown (e.g. a 15-min reject cooldown must not
+        # override a 120-min re-entry cooldown still in effect) — keep the later one.
+        existing = self.get_state(f"cooldown:{symbol.upper()}")
+        if existing:
+            try:
+                if datetime.fromisoformat(existing) > datetime.fromisoformat(until_iso):
+                    return
+            except ValueError:
+                pass
         self.set_state(f"cooldown:{symbol.upper()}", until_iso)
 
     def in_cooldown(self, symbol: str) -> bool:
         v = self.get_state(f"cooldown:{symbol.upper()}")
         if not v:
             return False
-        from datetime import datetime, timezone
         try:
             return datetime.fromisoformat(v) > datetime.now(timezone.utc)
         except ValueError:
             return False
+
+    def cooled_down_tokens(self) -> set[str]:
+        """Symbols whose cooldown (re-entry or judge-rejection) is still in effect —
+        the gate excludes these so it surfaces the best NON-cooled candidate."""
+        now = datetime.now(timezone.utc)
+        rows = self.conn.execute(
+            "SELECT key, value FROM agent_state WHERE key LIKE 'cooldown:%'"
+        ).fetchall()
+        out: set[str] = set()
+        for key, value in rows:
+            try:
+                if datetime.fromisoformat(value) > now:
+                    out.add(key.split(":", 1)[1])
+            except (ValueError, IndexError):
+                continue
+        return out
 
     # --- Price accumulation -------------------------------------------------
 

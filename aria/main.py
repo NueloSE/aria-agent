@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from aria import brain, config, execution, safety, strategies
 from aria.execution import manager
@@ -70,6 +71,22 @@ async def maybe_heartbeat(store: Store, portfolio: PortfolioState, dry_run: bool
     log.info("compliance heartbeat (%d trades today): %s", trades_today, result)
 
 
+def _persist_regime(store: Store, regime: RegimeCache, posture: RiskPosture) -> None:
+    """Mirror the in-memory posture + macro read to agent_state so the dashboard
+    (a separate read-only process) can show what ARIA is currently seeing."""
+    snap = regime.snapshot
+    store.set_state("regime", json.dumps({
+        "posture": posture.label,
+        "reason": posture.reason,
+        "allow_new_entries": posture.allow_new_entries,
+        "size_multiplier": posture.size_multiplier,
+        "fear_greed": snap.fear_greed_index if snap else None,
+        "fear_greed_label": snap.fear_greed_label if snap else None,
+        "mcap_7d": snap.total_mcap_change_7d_pct if snap else None,
+        "updated": datetime.now(timezone.utc).isoformat(),
+    }))
+
+
 def _has_room(portfolio: PortfolioState) -> bool:
     """Can we open another position? Need deployable stables and room under the
     concurrent-position cap (each entry is already size-capped at MAX_POSITION_PCT)."""
@@ -85,7 +102,7 @@ def _entry_decision(candidate, mode: str, judgment, posture: RiskPosture) -> Dec
     if judgment.size_pct is not None:
         size = min(size, judgment.size_pct)
     size = min(size * posture.size_multiplier, config.MAX_POSITION_PCT)
-    regime = "trending" if mode == "narrative_rotation" else "ranging"
+    regime = "trending" if mode in ("narrative_rotation", "breakout") else "ranging"
     return Decision(
         regime=regime, mode=mode, action="buy",
         token_symbol=candidate.token_symbol, size_pct=size,
@@ -176,6 +193,7 @@ async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
     refreshed = await regime.refresh_if_stale()
     regime.update_quotes(quotes)
     posture = regime.posture
+    _persist_regime(store, regime, posture)
 
     # 3. ENTRY HUNT — deterministic gates, then the event-driven LLM judge.
     decision = await _hunt_entry(store, regime, portfolio, posture, refreshed)
@@ -221,18 +239,42 @@ async def _hunt_entry(store: Store, regime: RegimeCache, portfolio: PortfolioSta
         return hold_decision("no macro read yet — deferring entries", regime="ranging")
 
     snap = regime.snapshot
+    # Exclude tokens in cooldown (just-exited OR just judge-rejected) so the gate
+    # falls through to the best NON-cooled candidate instead of re-judging the same one.
+    skip = store.cooled_down_tokens()
     candidate, mode = await strategies.scan_entries(
-        snap, portfolio, allow_narrative=(refreshed and posture.allow_narrative))
+        snap, portfolio, allow_narrative=(refreshed and posture.allow_narrative), skip=skip)
     if candidate.action != "buy" or not candidate.token_symbol:
         return hold_decision(candidate.rationale, regime="ranging")
-    if store.in_cooldown(candidate.token_symbol):
-        return hold_decision(f"{candidate.token_symbol} in re-entry cooldown — avoiding churn",
-                             regime="ranging")
 
-    # EVENT-DRIVEN LLM CALL — only now that a real candidate exists.
+    # Per-candidate TECHNICAL confirmation (1 credit on THIS token only): real RSI
+    # (oversold for MR / not-overbought for breakout) + Fibonacci target/stop. Fail-safe.
+    if config.MR_CONFIRM_ENABLED and mode in ("mean_reversion", "breakout"):
+        try:
+            from aria.signals import client as signals_mod
+            from aria.strategies import confirm
+            ta = confirm.parse_ta(await signals_mod.fetch_token_ta(candidate.token_symbol))
+            price = (snap.token_quotes.get(candidate.token_symbol) or {}).get("price")
+            confirm_fn = (confirm.confirm_candidate if mode == "mean_reversion"
+                          else confirm.confirm_breakout)
+            ok, reason, candidate = confirm_fn(candidate, ta, price)
+            if not ok:
+                until = (datetime.now(timezone.utc)
+                         + timedelta(minutes=config.REJECT_COOLDOWN_MIN)).isoformat()
+                store.set_cooldown(candidate.token_symbol, until)
+                return hold_decision(f"TA-rejected {candidate.token_symbol}: {reason}",
+                                     regime="ranging")
+        except Exception as exc:  # noqa: BLE001 — never let confirmation block the loop
+            log.warning("TA confirmation failed (proceeding without): %s", exc)
+
+    # EVENT-DRIVEN LLM CALL — only now that a real, non-cooled candidate exists.
     judgment = await brain.judge_entry(candidate, snap, portfolio, posture)
     if judgment.approve and judgment.confidence >= config.CONFIDENCE_FLOOR:
         return _entry_decision(candidate, mode or "mean_reversion", judgment, posture)
+    # Cool the rejected token down so we don't re-pay the judge for it every tick.
+    until = (datetime.now(timezone.utc)
+             + timedelta(minutes=config.REJECT_COOLDOWN_MIN)).isoformat()
+    store.set_cooldown(candidate.token_symbol, until)
     return hold_decision(f"judge rejected {candidate.token_symbol} "
                          f"(conf {judgment.confidence:.2f}): {judgment.reasoning}", regime="ranging")
 

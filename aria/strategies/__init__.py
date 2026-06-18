@@ -9,7 +9,7 @@ import logging
 
 from aria import config
 from aria.models import Decision, MarketSnapshot, PortfolioState
-from aria.strategies import mean_reversion, narrative_rotation, preservation
+from aria.strategies import breakout, mean_reversion, narrative_rotation, preservation
 from aria.strategies.base import Proposal, hold_proposal
 
 log = logging.getLogger("aria.strategies")
@@ -51,21 +51,30 @@ async def scan_entries(
     snapshot: MarketSnapshot,
     portfolio: PortfolioState,
     allow_narrative: bool = False,
+    skip: "set[str] | None" = None,
 ) -> "tuple[Proposal, str | None]":
     """Run the deterministic entry gates to surface ONE candidate (or hold).
 
     This is the fast loop's entry hunter — pure gate logic, NO LLM. Mean-reversion
     (counter-trend, works in any regime, zero extra credits) is scanned every tick;
     narrative-rotation (needs a trend, costs candidate-quote enrichment) only when the
-    caller permits it (typically right after a macro refresh). Returns the candidate
-    Proposal and which mode produced it ('mean_reversion' | 'narrative_rotation' | None)."""
-    mr = mean_reversion.propose(snapshot, portfolio)
+    caller permits it (typically right after a macro refresh). `skip` excludes tokens in
+    cooldown (just-exited or judge-rejected) so the gate returns the best NON-cooled
+    candidate. Returns the Proposal and its mode ('mean_reversion' | 'narrative_rotation' | None)."""
+    skip = skip or set()
+    mr = mean_reversion.propose(snapshot, portfolio, skip=skip)
     if mr.action == "buy":
         return mr, "mean_reversion"
 
+    # Breakout/momentum — fires in recovering/trending markets MR misses (more coverage).
+    if config.BO_ENABLED:
+        bo = breakout.propose(snapshot, portfolio, skip=skip)
+        if bo.action == "buy":
+            return bo, "breakout"
+
     if allow_narrative:
         await _enrich_candidate_quotes(snapshot)
-        nr = narrative_rotation.propose(snapshot, portfolio)
+        nr = narrative_rotation.propose(snapshot, portfolio, skip=skip)
         if nr.action == "buy":
             return nr, "narrative_rotation"
 

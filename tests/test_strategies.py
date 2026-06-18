@@ -7,6 +7,7 @@ from aria import config
 from aria.models import Decision, MarketSnapshot, PortfolioState, Position
 from aria.strategies import narrative_rotation, preservation, refine
 from aria.strategies.mean_reversion import propose as mr_propose
+from aria.strategies.breakout import propose as bo_propose
 from aria.signals.client import fetch_snapshot_from_fixtures
 
 NOW = datetime.now(timezone.utc)
@@ -161,6 +162,102 @@ class TestMeanReversionReclaim:
                                    "percent_change_24h": 1.2, "percent_change_7d": -14.0,
                                    "percent_change_30d": -20.0, "volume_24h": "100 K"}})
         assert mr_propose(snap, portfolio()).action == "hold"
+
+    def test_dead_cat_1h_rolling_over_rejected(self):
+        # washed + up on the day, but DUMPING this hour -> dead-cat guard rejects it
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_1h": -3.0, "percent_change_24h": 1.2,
+                                   "percent_change_7d": -8.0, "percent_change_30d": -20.0,
+                                   "volume_24h": "9 B"}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "hold"
+        assert "rolling over" in p.rationale
+
+    def test_volume_collapse_rejected(self):
+        # clean reclaim but volume COLLAPSING -> weak bounce, rejected
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_1h": 0.3, "percent_change_24h": 1.2,
+                                   "percent_change_7d": -8.0, "percent_change_30d": -20.0,
+                                   "volume_change_24h": -60.0, "volume_24h": "9 B"}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "hold"
+        assert "volume collapsing" in p.rationale
+
+    def test_prefers_live_bounce_on_rising_volume(self):
+        # two valid setups; the one reclaiming on rising volume + a live 1h wins
+        base = {"percent_change_24h": 1.2, "percent_change_7d": -8.0,
+                "percent_change_30d": -20.0, "volume_24h": "9 B"}
+        snap = self._snap({
+            "ETH": {"symbol": "ETH", "price": 1600.0, "percent_change_1h": 0.1,
+                    "volume_change_24h": -10.0, **base},        # fading
+            "LINK": {"symbol": "LINK", "price": 12.0, "percent_change_1h": 1.5,
+                     "volume_change_24h": 40.0, **base},        # accumulation
+        })
+        p = mr_propose(snap, portfolio())
+        assert p.action == "buy" and p.token_symbol == "LINK"
+
+    # quality gates (the IP failure mode)
+    _CLEAN = {"symbol": "ETH", "price": 1600.0, "percent_change_1h": 0.3,
+              "percent_change_24h": 1.2, "percent_change_7d": -8.0,
+              "percent_change_30d": -20.0, "volume_24h": "9 B"}
+
+    def test_micro_cap_rank_excluded(self):
+        snap = self._snap({"ETH": {**self._CLEAN, "rank": 400}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "hold" and "too small" in p.rationale
+
+    def test_structurally_broken_1y_excluded(self):
+        # a dying token (1y -90%) is a falling knife, not a reversion — like IP
+        snap = self._snap({"ETH": {**self._CLEAN, "rank": 20, "percent_change_1y": -90.0}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "hold" and "structurally broken" in p.rationale
+
+    def test_quality_oversold_not_over_filtered(self):
+        # rank-20, washed but alive on the year -> still a valid buy
+        snap = self._snap({"ETH": {**self._CLEAN, "rank": 20,
+                                   "percent_change_1y": -40.0, "percent_change_90d": -20.0}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "buy" and p.token_symbol == "ETH"
+
+    def test_early_1h_reclaim_buys_even_if_24h_flat(self):
+        # 24h still slightly red, but turning up THIS hour -> broadened reclaim catches it
+        snap = self._snap({"ETH": {"symbol": "ETH", "price": 1600.0,
+                                   "percent_change_1h": 0.8, "percent_change_24h": -0.2,
+                                   "percent_change_7d": -8.0, "percent_change_30d": -20.0,
+                                   "volume_24h": "9 B"}})
+        p = mr_propose(snap, portfolio())
+        assert p.action == "buy" and p.token_symbol == "ETH"
+
+
+class TestBreakout:
+    """Momentum breakout — buy quality tokens breaking UP on real volume."""
+
+    def _snap(self, quotes: dict[str, dict]) -> MarketSnapshot:
+        return MarketSnapshot(timestamp=NOW, token_quotes=quotes)
+
+    _MOVE = {"symbol": "ETH", "price": 1600.0, "percent_change_1h": 0.5,
+             "percent_change_24h": 6.0, "percent_change_7d": 3.0,
+             "volume_change_24h": 40.0, "volume_24h": "9 B", "rank": 2}
+
+    def test_breakout_on_volume_buys(self):
+        p = bo_propose(self._snap({"ETH": self._MOVE}), portfolio())
+        assert p.action == "buy" and p.token_symbol == "ETH"
+
+    def test_weak_volume_rejected(self):
+        snap = self._snap({"ETH": {**self._MOVE, "volume_change_24h": 5.0}})
+        assert bo_propose(snap, portfolio()).action == "hold"
+
+    def test_not_moving_enough_holds(self):
+        snap = self._snap({"ETH": {**self._MOVE, "percent_change_24h": 1.0}})
+        assert bo_propose(snap, portfolio()).action == "hold"
+
+    def test_micro_cap_excluded(self):
+        snap = self._snap({"ETH": {**self._MOVE, "rank": 400}})
+        assert bo_propose(snap, portfolio()).action == "hold"
+
+    def test_already_ripped_excluded(self):
+        snap = self._snap({"ETH": {**self._MOVE, "percent_change_7d": 60.0}})
+        assert bo_propose(snap, portfolio()).action == "hold"
 
 
 class TestRefineRouter:

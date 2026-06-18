@@ -66,7 +66,7 @@ class TestScanEntries:
         from aria.strategies import mean_reversion
 
         monkeypatch.setattr(mean_reversion, "propose",
-                            lambda s, p: candidate())
+                            lambda s, p, skip=None: candidate())
         prop, mode = await strategies.scan_entries(snap(), flat(), allow_narrative=False)
         assert prop.action == "buy" and mode == "mean_reversion"
 
@@ -76,6 +76,6 @@ class TestScanEntries:
         from aria.strategies.base import hold_proposal
 
         monkeypatch.setattr(mean_reversion, "propose",
-                            lambda s, p: hold_proposal("nothing washed out"))
+                            lambda s, p, skip=None: hold_proposal("nothing washed out"))
         prop, mode = await strategies.scan_entries(snap(), flat(), allow_narrative=False)
         assert prop.action == "hold" and mode is None

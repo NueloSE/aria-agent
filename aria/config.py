@@ -89,6 +89,10 @@ MIN_EDGE_MULTIPLE = _env_float("MIN_EDGE_MULTIPLE", 1.5)   # target >= 1.5x cost
 # After exiting a token, don't re-buy it for this long — prevents take-profit/stop
 # → immediate re-entry churn that bleeds to costs.
 REENTRY_COOLDOWN_MIN = _env_float("REENTRY_COOLDOWN_MIN", 120.0)
+# After the LLM judge REJECTS a candidate, don't re-judge that same token for this long
+# — stops paying for the same reject every tick, and lets the gate fall through to the
+# next-best candidate. Short (15 min) so a setup that genuinely turns isn't missed.
+REJECT_COOLDOWN_MIN = _env_float("REJECT_COOLDOWN_MIN", 15.0)
 
 # --- Exit management: stepped trailing stop + take-profit (lock winners, cut losers) ---
 TRAIL_TRIGGER_PCT = _env_float("TRAIL_TRIGGER_PCT", 2.5)   # arm trailing once gain >= this
@@ -110,12 +114,37 @@ NR_MAX_NARRATIVE_ALLOCATION = 40.0
 # the reclaim, so it's dropped. An anti-chase guard skips names that already ripped.
 MR_ENABLED = True
 MR_STRETCH_30D_PCT = _env_float("MR_STRETCH_30D_PCT", -15.0)   # 30d change <= this (washed out on the month)
-MR_RECLAIM_24H_PCT = _env_float("MR_RECLAIM_24H_PCT", 0.5)     # 24h change >= this (turning back up)
-MR_MAX_7D_RUN_PCT = _env_float("MR_MAX_7D_RUN_PCT", 15.0)      # skip if 7d > this (already bounced — catch it EARLY)
+MR_RECLAIM_24H_PCT = _env_float("MR_RECLAIM_24H_PCT", 0.5)     # 24h change >= this (turning back up over the day)
+MR_RECLAIM_1H_TURN_PCT = _env_float("MR_RECLAIM_1H_TURN_PCT", 0.3)  # OR 1h change >= this: catches the EARLY turn before 24h flips green (more setups when the market stabilizes)
+MR_RECLAIM_1H_PCT = _env_float("MR_RECLAIM_1H_PCT", -1.5)      # 1h floor: reject if dumping harder than this THIS hour (anti dead-cat)
+MR_MAX_7D_RUN_PCT = _env_float("MR_MAX_7D_RUN_PCT", 12.0)      # skip if 7d > this (already bounced — catch it EARLY; tightened 15->12)
+MR_MIN_VOL_CHANGE_PCT = _env_float("MR_MIN_VOL_CHANGE_PCT", -25.0)  # 24h volume change >= this: reclaim on returning (not collapsing) volume
 MR_MIN_LIQUIDITY_USD = 5_000_000   # only deep, safe names for counter-trend
+# Quality gates (added 2026-06-18 after the IP loss): mean-reversion targets names that
+# are temporarily oversold, NOT ones in a structural collapse. A token down catastrophically
+# over the year/quarter is a dying falling-knife, not a reversion candidate.
+MR_MAX_RANK = int(_env_float("MR_MAX_RANK", 250))            # skip deep micro-caps (CMC rank worse than this)
+MR_MAX_1Y_DECLINE_PCT = _env_float("MR_MAX_1Y_DECLINE_PCT", -85.0)    # skip structurally broken (1y <= this)
+MR_MAX_90D_DECLINE_PCT = _env_float("MR_MAX_90D_DECLINE_PCT", -70.0)  # fallback guard when 1y is absent (newer tokens)
 MR_STOP_LOSS_PCT = 5.0
 MR_TARGET_PCT = 7.0                # snap-to-mean target; clears the fee gate (>2.25%)
 MR_SIZE_PCT = 10.0
+# Per-candidate TECHNICAL confirmation (get_crypto_technical_analysis, 1 credit on the
+# single top candidate only). Real RSI confirms genuine oversold (not just "down"), and
+# Fibonacci levels give structure-aware targets/stops. Organizers explicitly reward
+# support/resistance use. Fail-safe: if the call fails, entry proceeds without it.
+MR_CONFIRM_ENABLED = os.getenv("MR_CONFIRM_ENABLED", "true").lower() == "true"
+MR_RSI_MAX = _env_float("MR_RSI_MAX", 48.0)        # enter only if RSI-14 <= this (oversold-leaning)
+MR_FIB_TARGET_MIN_PCT = _env_float("MR_FIB_TARGET_MIN_PCT", 3.5)   # skip fib targets that barely clear costs
+MR_FIB_TARGET_MAX_PCT = _env_float("MR_FIB_TARGET_MAX_PCT", 20.0)  # ignore implausibly far fib targets
+MR_FIB_STOP_MIN_PCT = _env_float("MR_FIB_STOP_MIN_PCT", 3.0)       # fib-derived stop must be at least this
+MR_FIB_STOP_MAX_PCT = _env_float("MR_FIB_STOP_MAX_PCT", 8.0)       # ...and at most this
+# Scoring weights — a real bottom is washed out AND reclaiming on rising volume.
+MR_W_WASHOUT = _env_float("MR_W_WASHOUT", 1.0)       # depth of the 30d washout
+MR_W_RECLAIM_24H = _env_float("MR_W_RECLAIM_24H", 1.0)   # 24h turn (capped)
+MR_W_RECLAIM_1H = _env_float("MR_W_RECLAIM_1H", 0.5)     # 1h confirmation (capped)
+MR_W_VOLUME = _env_float("MR_W_VOLUME", 0.15)            # rising 24h volume (capped)
+MR_W_CHASE_PENALTY = _env_float("MR_W_CHASE_PENALTY", 0.5)  # penalize already-recovered 7d
 
 # --- Global risk posture (coarse macro guard, refreshed every MACRO_REFRESH_SEC) ---
 # A cheap deterministic gate over the cached macro read that sets a GLOBAL stance the
@@ -127,6 +156,23 @@ POSTURE_CRASH_7D_PCT = _env_float("POSTURE_CRASH_7D_PCT", -15.0)  # total mcap 7
 POSTURE_CAUTION_FEAR = _env_float("POSTURE_CAUTION_FEAR", 25.0)   # F&G <= this -> half size, MR only
 POSTURE_SOFT_7D_PCT = _env_float("POSTURE_SOFT_7D_PCT", -8.0)     # total mcap 7d <= this -> half size, MR only
 
+# --- Strategy: breakout / momentum (covers RECOVERING & trending markets that the
+# counter-trend oversold-reclaim play misses — more quality setups across the cycle) ---
+# Buy a quality token that is breaking UP on real volume but isn't overextended. Cheap
+# quote-field gates find the candidate; per-candidate TA then confirms (RSI not overbought,
+# Fibonacci extension for the target). Reuses the MR quality gates (rank / not-dying).
+BO_ENABLED = os.getenv("BO_ENABLED", "true").lower() == "true"
+BO_MIN_24H_PCT = _env_float("BO_MIN_24H_PCT", 4.0)      # up at least this on the day (clearly moving)
+BO_MIN_1H_PCT = _env_float("BO_MIN_1H_PCT", 0.0)        # still up THIS hour (not already reversing)
+BO_MIN_VOL_CHANGE_PCT = _env_float("BO_MIN_VOL_CHANGE_PCT", 25.0)  # volume up >= this (real participation)
+BO_MIN_7D_PCT = _env_float("BO_MIN_7D_PCT", -10.0)     # 7d base forming, not in freefall
+BO_MAX_7D_PCT = _env_float("BO_MAX_7D_PCT", 40.0)      # not already ripped (no chasing)
+BO_RSI_MAX = _env_float("BO_RSI_MAX", 70.0)            # reject if RSI-14 overbought (no room to run)
+BO_MIN_LIQUIDITY_USD = 5_000_000
+BO_TARGET_PCT = _env_float("BO_TARGET_PCT", 10.0)      # default target if no fib extension fits
+BO_STOP_LOSS_PCT = _env_float("BO_STOP_LOSS_PCT", 5.0)
+BO_SIZE_PCT = _env_float("BO_SIZE_PCT", 10.0)
+
 # --- Strategy: preservation ---
 PRESERVATION_TARGET = "USDT"
 
@@ -135,7 +181,11 @@ PRESERVATION_TARGET = "USDT"
 SIGNALS_MODE = os.getenv("SIGNALS_MODE", "live" if os.getenv("CMC_MCP_API_KEY") else "fixtures")
 CMC_MCP_URL = "https://mcp.coinmarketcap.com/mcp"
 SIGNAL_TIMEOUT_S = 60
-SIGNAL_MAX_CONSECUTIVE_FAILURES = 3  # then force preservation until signals return
+SIGNAL_MAX_CONSECUTIVE_FAILURES = int(_env_float("SIGNAL_MAX_CONSECUTIVE_FAILURES", 10))
+# Raised 3 -> 10 (2026-06-18): with per-call retry-backoff already absorbing single
+# blips, a brief signal gap (a laptop sleeping, a transient outage) should NOT liquidate
+# stop-protected positions. ~10 consecutive failed ticks (several minutes blind) still
+# de-risks to stables on a genuinely sustained outage.
 # Per-call resilience: a transient transport blip or CMC 5xx is retried in-place with
 # backoff so it never counts toward the consecutive-failure tally. A sustained outage
 # (e.g. internet down) still exhausts retries -> the tick fails -> preservation kicks in.
