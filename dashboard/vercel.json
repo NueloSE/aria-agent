@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://REPLACE_WITH_RAILWAY_DOMAIN.up.railway.app/api/:path*"
+      "destination": "https://aria-agent-production-3eb6.up.railway.app/api/:path*"
     }
   ]
 }
