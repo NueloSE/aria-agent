@@ -11,6 +11,8 @@ import {
 import { KpiHero } from "./KpiHero";
 import { RegimeStrip } from "./RegimeStrip";
 import { PnlChart } from "./PnlChart";
+import { CandleChart } from "./CandleChart";
+import { DrawdownGauge } from "./DrawdownGauge";
 import { PositionsPanel } from "./PositionsPanel";
 import { DecisionLog } from "./DecisionLog";
 import { Controls } from "./Controls";
@@ -60,9 +62,11 @@ export function Dashboard() {
   }, [refresh]);
 
   return (
-    <div className="min-h-screen">
-      <header className="bg-brand-gradient border-b border-border">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+    <div className="relative min-h-screen">
+      <BackdropGlow />
+
+      <header className="sticky top-0 z-30 border-b border-border bg-background/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-baseline gap-3">
             <a href="/" aria-label="ARIA home" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Logo size={26} />
@@ -77,6 +81,7 @@ export function Dashboard() {
               <Pill>{status.config.network}</Pill>
               <Pill>{status.config.execution_mode === "paper" ? "paper trading" : status.config.execution_mode}</Pill>
               <Pill>{status.config.brain.split("/")[1] ?? status.config.brain}</Pill>
+              {status.cycles != null && <Pill>{status.cycles.toLocaleString()} cycles</Pill>}
               <a
                 href={`https://bscscan.com/address/${status.config.wallet}`}
                 target="_blank"
@@ -87,8 +92,9 @@ export function Dashboard() {
                 {shortAddr(status.config.wallet)}
               </a>
               <span className="inline-flex items-center gap-2 border-l border-border pl-2">
+                <UtcClock />
                 {updatedAt && !error && (
-                  <span className="hidden md:inline">updated {timeAgo(new Date(updatedAt).toISOString())}</span>
+                  <span className="hidden md:inline">· updated {timeAgo(new Date(updatedAt).toISOString())}</span>
                 )}
                 <LiveDot ok={!error} />
               </span>
@@ -97,7 +103,7 @@ export function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
+      <main className="relative mx-auto max-w-6xl space-y-5 px-4 py-6">
         {error && (
           <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             Can't reach the agent API ({error}). Start it with{" "}
@@ -113,8 +119,25 @@ export function Dashboard() {
             <KpiHero perf={perf} status={status} />
             <RegimeStrip status={status} />
 
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+              <section aria-labelledby="px-h" className="lg:col-span-2">
+                <h2 id="px-h" className="mb-2 text-base font-medium">Price action</h2>
+                <CandleChart />
+              </section>
+              <section aria-labelledby="dd-h">
+                <h2 id="dd-h" className="mb-2 text-base font-medium">Drawdown vs. limits</h2>
+                <div className="flex h-[calc(100%-2rem)] min-h-72 items-center justify-center rounded-xl border border-border bg-card p-4">
+                  <DrawdownGauge
+                    drawdownPct={status.portfolio?.drawdown_pct ?? 0}
+                    haltPct={status.config.halt_drawdown_pct}
+                    dqPct={status.config.max_drawdown_pct}
+                  />
+                </div>
+              </section>
+            </div>
+
             <section aria-labelledby="pnl-h">
-              <h2 id="pnl-h" className="mb-2 text-base font-medium">Portfolio vs. risk gates</h2>
+              <h2 id="pnl-h" className="mb-2 text-base font-medium">Portfolio value vs. risk gates</h2>
               <div className="rounded-xl border border-border bg-card p-4">
                 <PnlChart points={portfolio} haltPct={status.config.halt_drawdown_pct} dqPct={status.config.max_drawdown_pct} />
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -151,9 +174,38 @@ export function Dashboard() {
   );
 }
 
+function BackdropGlow() {
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div className="bg-brand-gradient absolute inset-0" />
+      <div
+        className="absolute -top-40 right-0 h-[36rem] w-[36rem] rounded-full opacity-60 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.5 0.18 285 / 0.30) 0%, transparent 70%)" }}
+      />
+      <div
+        className="absolute -bottom-48 -left-24 h-[32rem] w-[32rem] rounded-full opacity-40 blur-3xl"
+        style={{ background: "radial-gradient(circle, oklch(0.55 0.15 250 / 0.22) 0%, transparent 70%)" }}
+      />
+    </div>
+  );
+}
+
+function UtcClock() {
+  const [t, setT] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setT(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span className="tabular-nums" title="Competition clock (UTC)">
+      {t.toISOString().slice(11, 19)} UTC
+    </span>
+  );
+}
+
 function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border border-border bg-background/30 px-2 py-0.5 lowercase tracking-tight">
+    <span className="rounded-full border border-border bg-card/60 px-2 py-0.5 lowercase tracking-tight backdrop-blur">
       {children}
     </span>
   );

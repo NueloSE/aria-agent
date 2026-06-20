@@ -78,6 +78,7 @@ def status() -> dict:
             "readonly": config.DASHBOARD_READONLY,
         },
         "trades_today": s.trades_today_utc(),
+        "cycles": s.conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0],
     }
 
 
@@ -199,6 +200,54 @@ def trades(limit: int = 100) -> list[dict]:
                  "SELECT id, cycle_id, timestamp, kind, from_token, to_token,"
                  " from_amount, to_amount, tx_hash, status"
                  " FROM trades ORDER BY id DESC LIMIT ?", (min(limit, 500),))
+
+
+def _bucket_ohlc(rows: list[dict], bucket_sec: int) -> list[dict]:
+    """Aggregate a timestamped price series into OHLC candles. The series is the
+    agent's accumulated CMC quotes (price_history) — CMC's free tier sells no OHLCV,
+    so we build candles from the prices we've already paid a credit for each cycle."""
+    from datetime import datetime
+
+    buckets: dict[int, dict] = {}
+    for r in rows:
+        try:
+            epoch = int(datetime.fromisoformat(r["timestamp"]).timestamp())
+            px = float(r["price_usd"])
+        except (TypeError, ValueError):
+            continue
+        b = epoch - (epoch % bucket_sec)
+        c = buckets.get(b)
+        if c is None:
+            buckets[b] = {"time": b, "open": px, "high": px, "low": px, "close": px}
+        else:
+            c["high"] = max(c["high"], px)
+            c["low"] = min(c["low"], px)
+            c["close"] = px
+    return [buckets[b] for b in sorted(buckets)]
+
+
+@app.get("/api/candles")
+def candles(symbol: Optional[str] = None, bucket: int = 900, limit: int = 240) -> dict:
+    """OHLC candles per token, built from the accumulated CMC price series. Returns
+    the list of symbols with enough history so the UI can offer a selector; with no
+    symbol it picks the one with the most data."""
+    bucket = max(60, min(bucket, 86_400))
+    s = store()
+    syms = _rows(s.conn,
+                 "SELECT symbol, COUNT(*) AS n FROM price_history"
+                 " GROUP BY symbol HAVING n >= 2 ORDER BY n DESC, symbol")
+    available = [r["symbol"] for r in syms]
+    if not available:
+        return {"symbol": None, "bucket_sec": bucket, "symbols": [], "candles": []}
+    sym = (symbol or available[0]).upper()
+    if sym not in available:
+        sym = available[0]
+    rows = _rows(s.conn,
+                 "SELECT timestamp, price_usd FROM price_history WHERE symbol = ? ORDER BY id",
+                 (sym,))
+    series = _bucket_ohlc(rows, bucket)
+    return {"symbol": sym, "bucket_sec": bucket, "symbols": available,
+            "candles": series[-min(limit, 1000):]}
 
 
 # --- Operator controls ------------------------------------------------------------

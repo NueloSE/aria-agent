@@ -68,6 +68,29 @@ class TestReads:
     def test_portfolio_empty_ok(self, client):
         assert client.get("/api/portfolio").json() == []
 
+    def test_status_reports_cycles(self, client):
+        # the fixture seeds one decision
+        assert client.get("/api/status").json()["cycles"] == 1
+
+    def test_candles_empty_ok(self, client):
+        body = client.get("/api/candles").json()
+        assert body == {"symbol": None, "bucket_sec": 900, "symbols": [], "candles": []}
+
+    def test_candles_ohlc_aggregation(self, client):
+        from datetime import datetime, timezone
+        s = Store(config.DB_PATH)
+        base = datetime(2026, 6, 20, 12, 0, 0, tzinfo=timezone.utc)
+        # four ticks inside one 15-min bucket: prices 10, 12, 9, 11
+        for i, px in enumerate((10.0, 12.0, 9.0, 11.0)):
+            ts = base.replace(minute=i).isoformat()
+            s.record_prices({"ETH": {"price": px}}, ts=ts)
+        body = client.get("/api/candles?symbol=ETH&bucket=900").json()
+        assert body["symbol"] == "ETH"
+        assert body["symbols"] == ["ETH"]
+        assert len(body["candles"]) == 1
+        c = body["candles"][0]
+        assert (c["open"], c["high"], c["low"], c["close"]) == (10.0, 12.0, 9.0, 11.0)
+
 
 class TestControls:
     def test_set_window_roundtrip(self, client):

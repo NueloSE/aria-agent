@@ -106,6 +106,22 @@ export interface Status {
     readonly?: boolean;
   };
   trades_today: number;
+  cycles?: number;
+}
+
+export interface Candle {
+  time: number; // unix seconds (bucket start)
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+export interface CandlesResponse {
+  symbol: string | null;
+  bucket_sec: number;
+  symbols: string[];
+  candles: Candle[];
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -127,6 +143,10 @@ export const api = {
   trades: (limit = 50) => request<Trade[]>(`/api/trades?limit=${limit}`),
   positions: () => request<Position[]>("/api/positions"),
   performance: () => request<Performance>("/api/performance"),
+  candles: (symbol?: string, bucket = 900) =>
+    request<CandlesResponse>(
+      `/api/candles?bucket=${bucket}${symbol ? `&symbol=${encodeURIComponent(symbol)}` : ""}`,
+    ),
   setWindow: (start: string | null, end: string | null) =>
     request("/api/window", { method: "POST", body: JSON.stringify({ start, end }) }),
   setOverride: (value: "on" | "off" | null) =>
