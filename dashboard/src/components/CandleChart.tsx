@@ -22,17 +22,15 @@ const TIMEFRAMES: { label: string; bucket: number }[] = [
 
 const REFRESH_MS = 30_000;
 
-// lightweight-charts parses colors itself and rejects oklch(), so resolve each brand
-// token to an rgb() string by letting the browser compute it on a throwaway element.
-function themeColor(varName: string): string {
-  const probe = document.createElement("span");
-  probe.style.color = `var(${varName})`;
-  probe.style.display = "none";
-  document.body.appendChild(probe);
-  const rgb = getComputedStyle(probe).color;
-  probe.remove();
-  return rgb || "rgb(148,148,160)";
-}
+// lightweight-charts parses colors with its own parser that rejects oklch() (and the
+// browser won't convert our oklch tokens for us), so the chart gets hex equivalents of
+// the Quantum Lab dark palette. Keep these in sync with index.css if the tokens change.
+const CHART = {
+  gain: "#00CA85", // --gain  oklch(0.74 0.17 160)
+  loss: "#FF5251", // --loss  oklch(0.68 0.21 25)
+  border: "#1B1F27", // --border  oklch(0.24 0.015 260)
+  text: "#92959C", // --muted-foreground  oklch(0.67 0.01 260)
+};
 
 function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -77,31 +75,29 @@ export function CandleChart() {
       autoSize: true,
       layout: {
         background: { color: "transparent" },
-        textColor: themeColor("--muted-foreground"),
+        textColor: CHART.text,
         fontFamily: cssVar("--font-mono") || "monospace",
         attributionLogo: false,
       },
       grid: {
-        vertLines: { color: themeColor("--border") },
-        horzLines: { color: themeColor("--border") },
+        vertLines: { color: CHART.border },
+        horzLines: { color: CHART.border },
       },
-      rightPriceScale: { borderColor: themeColor("--border") },
+      rightPriceScale: { borderColor: CHART.border },
       timeScale: {
-        borderColor: themeColor("--border"),
+        borderColor: CHART.border,
         timeVisible: true,
         secondsVisible: false,
       },
       crosshair: { mode: 0 },
     });
-    const gain = themeColor("--gain");
-    const loss = themeColor("--loss");
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: gain,
-      downColor: loss,
-      wickUpColor: gain,
-      wickDownColor: loss,
-      borderUpColor: gain,
-      borderDownColor: loss,
+      upColor: CHART.gain,
+      downColor: CHART.loss,
+      wickUpColor: CHART.gain,
+      wickDownColor: CHART.loss,
+      borderUpColor: CHART.gain,
+      borderDownColor: CHART.loss,
     });
     chartRef.current = chart;
     seriesRef.current = series;
