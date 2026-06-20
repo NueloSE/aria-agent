@@ -29,9 +29,10 @@ class TestFeeGate:
             safety.validate(buy(None), flat())
 
     def test_target_below_minimum_vetoed(self):
-        # min = 1.5x * 1.5% round trip = 2.25%
+        # min = MIN_EDGE_MULTIPLE x round-trip cost; use a target just under it
+        below = config.round_trip_cost_pct() * config.MIN_EDGE_MULTIPLE / 2
         with pytest.raises(safety.Veto, match="fee-gate"):
-            safety.validate(buy(2.0), flat())
+            safety.validate(buy(below), flat())
 
     def test_adequate_target_passes(self):
         safety.validate(buy(10.0), flat())

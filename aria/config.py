@@ -45,7 +45,10 @@ PAPER_START_USD = _env_float("PAPER_START_USD", 100.0)
 # The competition applies SIMULATED costs at market price (admins: don't calibrate
 # to live TWAK quotes). Mirror that: cost per leg. ~0.75%/leg ≈ 1.5% round trip —
 # a placeholder until organizers publish the official model. One env var to retune.
-SIM_COST_PCT_PER_LEG = _env_float("SIM_COST_PCT_PER_LEG", 0.75)
+# Real figure confirmed by organizers (2026-06-20): 0.077%/leg, ~0.15% round-trip
+# (waived from 0.7% for the trading week). Cost is now ~10x lower than our earlier
+# conservative placeholder, so small frequent wins are genuinely profitable.
+SIM_COST_PCT_PER_LEG = _env_float("SIM_COST_PCT_PER_LEG", 0.077)
 
 # --- Loop (decoupled cadence: fast deterministic loop + event-driven LLM) ---
 # The fast loop polls quotes, manages exits, and runs the deterministic entry gates
@@ -95,7 +98,7 @@ REENTRY_COOLDOWN_MIN = _env_float("REENTRY_COOLDOWN_MIN", 120.0)
 REJECT_COOLDOWN_MIN = _env_float("REJECT_COOLDOWN_MIN", 15.0)
 
 # --- Exit management: stepped trailing stop + take-profit (lock winners, cut losers) ---
-TRAIL_TRIGGER_PCT = _env_float("TRAIL_TRIGGER_PCT", 2.5)   # arm trailing once gain >= this
+TRAIL_TRIGGER_PCT = _env_float("TRAIL_TRIGGER_PCT", 1.5)   # arm trailing once gain >= this (lowered 2.5->1.5: cheap costs let us lock smaller wins)
 TRAIL_INITIAL_SL_PCT = _env_float("TRAIL_INITIAL_SL_PCT", 1.0)  # lock this gain when armed
 TRAIL_STEP_PCT = _env_float("TRAIL_STEP_PCT", 0.5)         # raise stop per step of further gain
 
@@ -127,7 +130,7 @@ MR_MAX_RANK = int(_env_float("MR_MAX_RANK", 250))            # skip deep micro-c
 MR_MAX_1Y_DECLINE_PCT = _env_float("MR_MAX_1Y_DECLINE_PCT", -85.0)    # skip structurally broken (1y <= this)
 MR_MAX_90D_DECLINE_PCT = _env_float("MR_MAX_90D_DECLINE_PCT", -70.0)  # fallback guard when 1y is absent (newer tokens)
 MR_STOP_LOSS_PCT = 5.0
-MR_TARGET_PCT = 7.0                # snap-to-mean target; clears the fee gate (>2.25%)
+MR_TARGET_PCT = _env_float("MR_TARGET_PCT", 4.0)  # default snap-to-mean target (lowered 7->4: real cost ~0.15%, exit the bounce sooner)
 MR_SIZE_PCT = 10.0
 # Per-candidate TECHNICAL confirmation (get_crypto_technical_analysis, 1 credit on the
 # single top candidate only). Real RSI confirms genuine oversold (not just "down"), and
@@ -135,7 +138,7 @@ MR_SIZE_PCT = 10.0
 # support/resistance use. Fail-safe: if the call fails, entry proceeds without it.
 MR_CONFIRM_ENABLED = os.getenv("MR_CONFIRM_ENABLED", "true").lower() == "true"
 MR_RSI_MAX = _env_float("MR_RSI_MAX", 48.0)        # enter only if RSI-14 <= this (oversold-leaning)
-MR_FIB_TARGET_MIN_PCT = _env_float("MR_FIB_TARGET_MIN_PCT", 3.5)   # skip fib targets that barely clear costs
+MR_FIB_TARGET_MIN_PCT = _env_float("MR_FIB_TARGET_MIN_PCT", 1.5)   # nearest resistance >= this is tradeable (lowered 3.5->1.5: cost is ~0.15%, small bounces profit)
 MR_FIB_TARGET_MAX_PCT = _env_float("MR_FIB_TARGET_MAX_PCT", 20.0)  # ignore implausibly far fib targets
 MR_FIB_STOP_MIN_PCT = _env_float("MR_FIB_STOP_MIN_PCT", 3.0)       # fib-derived stop must be at least this
 MR_FIB_STOP_MAX_PCT = _env_float("MR_FIB_STOP_MAX_PCT", 8.0)       # ...and at most this
@@ -169,7 +172,7 @@ BO_MIN_7D_PCT = _env_float("BO_MIN_7D_PCT", -10.0)     # 7d base forming, not in
 BO_MAX_7D_PCT = _env_float("BO_MAX_7D_PCT", 40.0)      # not already ripped (no chasing)
 BO_RSI_MAX = _env_float("BO_RSI_MAX", 70.0)            # reject if RSI-14 overbought (no room to run)
 BO_MIN_LIQUIDITY_USD = 5_000_000
-BO_TARGET_PCT = _env_float("BO_TARGET_PCT", 10.0)      # default target if no fib extension fits
+BO_TARGET_PCT = _env_float("BO_TARGET_PCT", 6.0)       # default target if no fib extension fits (lowered 10->6: cheap costs)
 BO_STOP_LOSS_PCT = _env_float("BO_STOP_LOSS_PCT", 5.0)
 BO_SIZE_PCT = _env_float("BO_SIZE_PCT", 10.0)
 
