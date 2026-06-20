@@ -74,7 +74,7 @@ CYCLE_INTERVAL_MIN = _env_float("CYCLE_INTERVAL_MIN", 15.0)
 MAX_DRAWDOWN_PCT = _env_float("MAX_DRAWDOWN_PCT", 30.0)
 HALT_DRAWDOWN_PCT = _env_float("HALT_DRAWDOWN_PCT", 20.0)
 MAX_POSITION_PCT = _env_float("MAX_POSITION_PCT", 15.0)
-MAX_CONCURRENT_POSITIONS = int(_env_float("MAX_CONCURRENT_POSITIONS", 4))  # cap open positions
+MAX_CONCURRENT_POSITIONS = int(_env_float("MAX_CONCURRENT_POSITIONS", 6))  # cap open positions (raised 4->6: cost is cheap, deploy more)
 CONFIDENCE_FLOOR = 0.6
 
 # --- Rule compliance (mandatory; enforced by safety/scheduler, never the LLM) ---
