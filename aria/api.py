@@ -75,6 +75,7 @@ def status() -> dict:
             "poll_interval_flat_sec": config.POLL_INTERVAL_FLAT_SEC,
             "macro_refresh_sec": config.MACRO_REFRESH_SEC,
             "wallet": config.AGENT_WALLET,
+            "readonly": config.DASHBOARD_READONLY,
         },
         "trades_today": s.trades_today_utc(),
     }
@@ -201,6 +202,13 @@ def trades(limit: int = 100) -> list[dict]:
 
 
 # --- Operator controls ------------------------------------------------------------
+# When DASHBOARD_READONLY is set (the public demo host), these endpoints are inert:
+# the agent must never be steerable from an internet-facing URL.
+
+def _guard_readonly() -> None:
+    if config.DASHBOARD_READONLY:
+        raise HTTPException(403, "dashboard is read-only — operator controls are disabled")
+
 
 class WindowBody(BaseModel):
     start: Optional[str] = None   # ISO-8601, UTC assumed if naive
@@ -209,6 +217,7 @@ class WindowBody(BaseModel):
 
 @app.post("/api/window")
 def set_window(body: WindowBody) -> dict:
+    _guard_readonly()
     s = store()
     try:
         window.set_window(s, body.start, body.end)
@@ -225,6 +234,7 @@ class OverrideBody(BaseModel):
 
 @app.post("/api/override")
 def set_override(body: OverrideBody) -> dict:
+    _guard_readonly()
     s = store()
     try:
         window.set_override(s, body.value)
@@ -237,6 +247,7 @@ def set_override(body: OverrideBody) -> dict:
 
 @app.post("/api/clear-halt")
 def clear_halt() -> dict:
+    _guard_readonly()
     s = store()
     if not safety.is_halted(s):
         return {"halted": False, "message": "agent was not halted"}

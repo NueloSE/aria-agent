@@ -103,6 +103,7 @@ export interface Status {
     poll_interval_flat_sec: number;
     macro_refresh_sec: number;
     wallet: string;
+    readonly?: boolean;
   };
   trades_today: number;
 }

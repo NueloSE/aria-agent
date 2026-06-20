@@ -16,7 +16,7 @@ import { DecisionLog } from "./DecisionLog";
 import { Controls } from "./Controls";
 import { TradesPanel } from "./TradesPanel";
 import { Logo } from "./Logo";
-import { shortAddr } from "../lib/format";
+import { shortAddr, timeAgo } from "../lib/format";
 
 const POLL_MS = 10_000;
 
@@ -28,6 +28,7 @@ export function Dashboard() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [perf, setPerf] = useState<Performance | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -45,6 +46,7 @@ export function Dashboard() {
       setTrades(t);
       setPositions(pos);
       setPerf(pf);
+      setUpdatedAt(Date.now());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -60,7 +62,7 @@ export function Dashboard() {
   return (
     <div className="min-h-screen">
       <header className="bg-brand-gradient border-b border-border">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-baseline gap-3">
             <a href="/" aria-label="ARIA home" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Logo size={26} />
@@ -71,11 +73,25 @@ export function Dashboard() {
             </p>
           </div>
           {status && (
-            <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
-              <span title={status.config.wallet} className="hidden sm:inline">{shortAddr(status.config.wallet)}</span>
-              <span className="hidden sm:inline">·</span>
-              <span>{status.config.execution_mode} · {status.config.brain.split("/")[1] ?? status.config.brain}</span>
-              <LiveDot ok={!error} />
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
+              <Pill>{status.config.network}</Pill>
+              <Pill>{status.config.execution_mode === "paper" ? "paper trading" : status.config.execution_mode}</Pill>
+              <Pill>{status.config.brain.split("/")[1] ?? status.config.brain}</Pill>
+              <a
+                href={`https://bscscan.com/address/${status.config.wallet}`}
+                target="_blank"
+                rel="noreferrer"
+                title={status.config.wallet}
+                className="hidden rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline"
+              >
+                {shortAddr(status.config.wallet)}
+              </a>
+              <span className="inline-flex items-center gap-2 border-l border-border pl-2">
+                {updatedAt && !error && (
+                  <span className="hidden md:inline">updated {timeAgo(new Date(updatedAt).toISOString())}</span>
+                )}
+                <LiveDot ok={!error} />
+              </span>
             </div>
           )}
         </div>
@@ -93,6 +109,7 @@ export function Dashboard() {
           <Skeleton />
         ) : status ? (
           <>
+            <NowBanner status={status} />
             <KpiHero perf={perf} status={status} />
             <RegimeStrip status={status} />
 
@@ -131,6 +148,74 @@ export function Dashboard() {
         ) : null}
       </main>
     </div>
+  );
+}
+
+function Pill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full border border-border bg-background/30 px-2 py-0.5 lowercase tracking-tight">
+      {children}
+    </span>
+  );
+}
+
+const POSTURE_NOTE: Record<string, string> = {
+  risk_on: "trading both plays at full size",
+  neutral: "trading both plays at full size",
+  cautious: "mean-reversion only, at half size",
+  risk_off: "holding — no new entries",
+};
+
+/** One plain-English line a cold visitor can read to know what ARIA is doing right
+ *  now — derived from halt state, the trading window, and the latest decision. */
+function NowBanner({ status }: { status: Status }) {
+  const d = status.last_decision;
+  const reasoning = d?.reasoning?.split(" | ")[0]?.trim() ?? null;
+
+  let tone = "bg-gain";
+  let headline: string;
+  let detail: string;
+
+  if (status.halted) {
+    tone = "bg-loss";
+    headline = "Trading halted";
+    detail = status.halt_reason ?? "Circuit breaker tripped — awaiting manual release.";
+  } else if (!status.trading_allowed) {
+    tone = "bg-warn";
+    headline = "Standing by";
+    detail = status.trading_reason || "Outside the competition window.";
+  } else {
+    const posture = status.regime?.posture;
+    headline = "Active";
+    detail = posture
+      ? `Risk posture ${posture.replace("_", "-")} — ${POSTURE_NOTE[posture] ?? "monitoring the tape"}.`
+      : "Reading the macro regime…";
+  }
+
+  return (
+    <section
+      aria-label="Current status"
+      className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:gap-4"
+    >
+      <div className="flex shrink-0 items-center gap-2.5">
+        <span className="relative flex h-2.5 w-2.5">
+          {!status.halted && (
+            <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${tone} opacity-60 motion-reduce:animate-none`} />
+          )}
+          <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${tone}`} />
+        </span>
+        <span className="text-base font-semibold">{headline}</span>
+      </div>
+      <p className="min-w-0 flex-1 text-sm text-muted-foreground sm:border-l sm:border-border sm:pl-4">
+        {detail}
+        {reasoning && !status.halted && (
+          <span className="mt-1 block truncate font-mono text-xs text-foreground/70" title={reasoning}>
+            latest: {reasoning}
+            {d?.timestamp ? ` · ${timeAgo(d.timestamp)}` : ""}
+          </span>
+        )}
+      </p>
+    </section>
   );
 }
 

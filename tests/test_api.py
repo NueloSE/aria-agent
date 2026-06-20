@@ -97,3 +97,33 @@ class TestControls:
         r = client.post("/api/clear-halt")
         assert r.json()["halted"] is False
         assert client.get("/api/status").json()["halted"] is False
+
+
+class TestReadonly:
+    """With DASHBOARD_READONLY set (the public demo host) the control POSTs are
+    inert (403) while every read endpoint still works."""
+
+    @pytest.fixture()
+    def ro_client(self, client, monkeypatch):
+        monkeypatch.setattr(config, "DASHBOARD_READONLY", True)
+        return client
+
+    def test_status_exposes_readonly_flag(self, ro_client):
+        assert ro_client.get("/api/status").json()["config"]["readonly"] is True
+
+    def test_reads_still_work(self, ro_client):
+        assert ro_client.get("/api/positions").status_code == 200
+        assert ro_client.get("/api/decisions").status_code == 200
+
+    def test_window_blocked(self, ro_client):
+        assert ro_client.post("/api/window", json={"start": "2026-06-21T12:00:00Z"}).status_code == 403
+
+    def test_override_blocked(self, ro_client):
+        assert ro_client.post("/api/override", json={"value": "off"}).status_code == 403
+
+    def test_clear_halt_blocked(self, ro_client):
+        assert ro_client.post("/api/clear-halt").status_code == 403
+
+    def test_default_is_writable(self, client):
+        assert client.get("/api/status").json()["config"]["readonly"] is False
+        assert client.post("/api/override", json={"value": None}).status_code == 200

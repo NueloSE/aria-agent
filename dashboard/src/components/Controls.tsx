@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type Status } from "../lib/api";
-import { OctagonX, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { Lock, OctagonX, Play, RotateCcw, ShieldCheck } from "lucide-react";
 
 /* Operator controls. Every action writes agent_state keys the loop reads each
    cycle — nothing here trades directly. Times are entered and displayed in UTC
@@ -16,6 +16,11 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmStop, setConfirmStop] = useState(false);
+
+  // On the public demo host the API is read-only: controls render so judges can see
+  // what's available, but every input and button is inert (the API also returns 403).
+  const readonly = !!status.config.readonly;
+  const locked = busy || readonly;
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -42,14 +47,22 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
         </p>
       </div>
 
+      {readonly && (
+        <p className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          <Lock size={13} aria-hidden className="shrink-0" />
+          Read-only view. Operator controls run on the private, localhost-only API — disabled here on the public dashboard.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted-foreground">Start (UTC)</span>
           <input
             type="datetime-local"
             value={start}
+            disabled={locked}
             onChange={(e) => setStart(e.target.value)}
-            className="w-full rounded-md border border-border bg-input px-3 py-2 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            className="w-full rounded-md border border-border bg-input px-3 py-2 font-mono text-sm text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           />
         </label>
         <label className="block">
@@ -57,15 +70,16 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
           <input
             type="datetime-local"
             value={end}
+            disabled={locked}
             onChange={(e) => setEnd(e.target.value)}
-            className="w-full rounded-md border border-border bg-input px-3 py-2 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            className="w-full rounded-md border border-border bg-input px-3 py-2 font-mono text-sm text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           />
         </label>
       </div>
 
       <button
         type="button"
-        disabled={busy}
+        disabled={locked}
         onClick={saveWindow}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
@@ -78,7 +92,7 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
         {status.override === "off" || confirmStop ? null : (
           <button
             type="button"
-            disabled={busy}
+            disabled={locked}
             onClick={() => setConfirmStop(true)}
             className="inline-flex items-center gap-1.5 rounded-md border border-loss/40 bg-loss/10 px-4 py-2 text-sm font-medium text-loss transition-colors hover:bg-loss/20 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-loss focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
@@ -88,7 +102,7 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
         {confirmStop && (
           <button
             type="button"
-            disabled={busy}
+            disabled={locked}
             onClick={() => {
               setConfirmStop(false);
               run(() => api.setOverride("off"));
@@ -101,7 +115,7 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
         {status.override !== null && (
           <button
             type="button"
-            disabled={busy}
+            disabled={locked}
             onClick={() => run(() => api.setOverride(null))}
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
@@ -111,7 +125,7 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
         {status.override !== "on" && (
           <button
             type="button"
-            disabled={busy}
+            disabled={locked}
             onClick={() => run(() => api.setOverride("on"))}
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
@@ -121,7 +135,7 @@ export function Controls({ status, onChanged }: { status: Status; onChanged: () 
         {status.halted && (
           <button
             type="button"
-            disabled={busy}
+            disabled={locked}
             onClick={() => run(() => api.clearHalt())}
             className="inline-flex items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-4 py-2 text-sm font-medium text-warn transition-colors hover:bg-warn/20 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >

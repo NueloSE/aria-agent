@@ -198,6 +198,12 @@ SIGNAL_RETRY_BACKOFF_S = _env_float("SIGNAL_RETRY_BACKOFF_S", 0.5)
 # --- State ---
 DB_PATH = Path(os.getenv("ARIA_DB", ROOT / "aria.sqlite3"))
 
+# --- Dashboard ---
+# When the API is exposed publicly (e.g. the Vercel demo URL proxies to it), the
+# operator POST endpoints (window / override / clear-halt) must be inert. Set
+# DASHBOARD_READONLY=true on the public host; the agent itself is unaffected.
+DASHBOARD_READONLY = os.getenv("DASHBOARD_READONLY", "false").lower() == "true"
+
 # --- Trading universe ---
 # Outer gate: official 149-token eligible list (trades outside it score nothing).
 _eligible = json.loads((ROOT / "aria" / "data" / "eligible_tokens.json").read_text())
