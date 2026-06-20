@@ -1,78 +1,78 @@
 # ARIA — Adaptive Regime Intelligence Agent
 
-> An autonomous AI trading agent that reads the market's regime first — then decides how to play it.
+> An autonomous AI trading agent that **reads the market's regime first — then decides how to play it.**
 
 Built for **BNB Hack: AI Trading Agent Edition** (June 2026) — Track 1: Autonomous Trading Agents.
-
 Organized by BNB Chain × CoinMarketCap × Trust Wallet.
 
 ---
 
 ## 🧠 What is ARIA?
 
-Most trading agents run one fixed strategy. A momentum bot that thrives in a trending market becomes a loss engine the moment the market starts ranging. ARIA is different: it synthesizes the **market regime** from live signals before every decision, then routes capital to the strategy built for that regime — and treats *not trading* as a position.
+Most trading agents run one fixed strategy — a momentum bot becomes a loss engine the moment
+the market ranges. ARIA is different: it reads the **market regime** from live signals before
+every decision, derives a **risk posture**, and runs the strategy built for that regime — and
+it treats *not trading* as a position.
+
+Crucially, ARIA uses its LLM as a **judge, not an oracle.** Deterministic strategy gates *find*
+real setups from CoinMarketCap data; the LLM (Claude) only **approves, rejects, or sizes** them
+against the macro picture. The model can never invent a trade — only bless one the math already
+found, or veto it. The safety layer then re-validates everything before a swap ever fires.
 
 ```
-                ┌─────────────────────────────────┐
-                │   CMC Agent Hub (MCP signals)    │
-                │ sentiment · TA · narratives ·    │
-                │ derivatives · macro events       │
-                └──────────────┬──────────────────┘
-                               │
-                ┌──────────────▼──────────────┐
-                │   LLM Reasoning Brain        │
-                │   (Claude)                   │
-                │   "Which regime are we in?   │
-                │    Cite the evidence."       │
-                └──────────────┬──────────────┘
-                               │
-        ┌──────────────────────┼──────────────────────┐
-        ▼                      ▼                      ▼
-┌───────────────┐    ┌────────────────┐    ┌─────────────────┐
-│ 🟢 TRENDING    │    │ 🟡 RANGING      │    │ 🔴 HIGH RISK     │
-│ Narrative     │    │ Stand          │    │ Capital         │
-│ Rotation      │    │ Aside          │    │ Preservation    │
-└───────┬───────┘    └────────┬───────┘    └────────┬────────┘
-        └──────────────────────┼──────────────────────┘
-                               │
-                ┌──────────────▼──────────────┐
-                │  Strategy gates + Safety     │
-                │  layer (VETO POWER)          │
-                └──────────────┬──────────────┘
-                               │
-                ┌──────────────▼──────────────┐
-                │  Trust Wallet Agent Kit      │
-                │  → spot swaps on BSC (MCP)   │
-                └─────────────────────────────┘
+CMC Agent Hub ─▶ Regime & Posture ─▶ Strategy Gates ─▶ TA Confirmation ─▶ LLM Judge ─▶ Safety ─▶ TWAK swap (BNB Chain)
+   (signals)        (risk stance)      (find candidate)   (RSI + Fib)      (approve?)   (veto)      (execute)
+                                                │
+                          Mechanical exits + drawdown breaker run every cycle (no LLM)
 ```
 
-## ⚡ The Strategy Modes
+ARIA runs a **two-speed loop**: a fast deterministic loop (~30–90s) polls prices, manages
+exits, and scans the strategy gates; the **LLM is event-driven** — invoked only when a real
+candidate needs judgment. Responsive and cheap, with the model's nuance exactly where it adds value.
 
-| Mode | Trigger | Strategy |
-|------|---------|----------|
-| 🟢 **Narrative Rotation** | regime = trending | Buy the strongest trending narrative's most liquid token from the official eligible list. Stop-loss on every entry. |
-| 🟡 **Stand Aside** | regime = ranging | No durable direction = no edge after transaction costs. Doing nothing **is** the strategy. |
-| 🔴 **Capital Preservation** | regime = high risk | Close positions, hold stables, wait. Surviving the week is most of winning it. |
+## ⚡ The Strategies — coverage across the whole cycle
 
-(A mean-reversion mode exists in the codebase but is disabled: with simulated round-trip costs, tight-band reversion has no edge. Strategy honesty over feature count.)
+| Strategy | Fires when… | Logic |
+|---|---|---|
+| 🔵 **Oversold reclaim** (mean-reversion) | fearful / post-decline | buy washed-out, quality blue chips turning back up on returning volume |
+| 🟢 **Breakout / momentum** | recovering / trending | buy quality tokens breaking up on real volume, not overextended |
+| 🟡 **Narrative rotation** | a hot sector has momentum | buy the strongest trending CMC narrative's most liquid eligible token |
+| 🔴 **Capital preservation** | no edge | sit in stablecoins — surviving the week is most of winning it |
+
+Every candidate then passes a **per-token technical confirmation** via the CMC Agent Hub's
+analysis tool: **RSI** gates the entry (genuine oversold for reclaims / not-overbought for
+breakouts), and **Fibonacci levels + pivots** set a structure-aware take-profit (nearest
+resistance) and stop (below support) — directly applying the support/resistance the
+competition encourages. A coarse **risk posture** (`risk-on` / `neutral` / `cautious` /
+`risk-off`) from the macro read decides how aggressively, or whether, to trade at all.
 
 ## 🛡️ Safety First — the rule engine outranks the model
 
-Track 1 is ranked on **% return with a ~30% max-drawdown disqualification gate**. ARIA treats that as a first-class constraint:
+Track 1 is ranked on **% return with a ~30% max-drawdown disqualification gate.** ARIA treats
+that as a first-class constraint, with a mechanical risk layer that runs every cycle (no LLM):
 
-- **Hard circuit breaker** — at 20% drawdown (well inside the 30% gate) ARIA closes everything, halts, and requires a human `--clear-halt` to resume. The latch survives restarts.
-- **The LLM recommends; it cannot execute.** Every order passes deterministic gates: official 149-token eligibility, liquidity floor, stop-loss presence, position-size cap, confidence floor.
-- **Quote gate** — every swap is quoted first; price impact above threshold aborts the trade.
-- **Compliance heartbeat** — the competition's 1-trade/day rule is enforced by a scheduler outside LLM control (small USDT↔ETH round trip), even while halted.
-- **Default to inaction** — ambiguous signals, malformed LLM output, API failures: every failure path becomes a logged hold, never a crash, never a blind trade.
+- **Mechanical exits** — take-profit at the Fibonacci target, a **stepped trailing stop** that
+  walks into profit and locks winners, and a hard stop-loss. De-risking never waits on the model.
+- **Hard circuit breaker** — at 20% drawdown (well inside the 30% gate) ARIA flattens everything,
+  halts, and requires a human release. The latch survives restarts.
+- **The LLM recommends; it cannot execute.** Every order passes deterministic gates: official
+  eligible-token list, liquidity floor, stop-loss presence, position-size & concurrency caps,
+  confidence floor, and a fee-aware min-edge check (calibrated to the confirmed ~0.15% cost).
+- **Anti-churn** — re-entry and post-rejection cooldowns; quote → price-impact gate on every swap.
+- **Compliance heartbeat** — the 1-trade/day rule is enforced by a scheduler outside LLM control,
+  even while halted.
+- **Default to inaction** — ambiguous signals, malformed LLM output, or API failures all become a
+  logged hold, never a crash, never a blind trade.
 
-## 🔌 Sponsor Stack (all three integrated)
+## 🔌 Sponsor Stack (all three, integrated end-to-end)
 
 | Tool | Role |
-|------|------|
-| **CMC Agent Hub** (MCP server) | Market signals: global metrics (Fear & Greed, Altcoin Season, dominance), technical analysis, trending narratives, derivatives data, macro events — ARIA's LLM synthesizes the market regime from these |
-| **Trust Wallet Agent Kit** | Self-custody agent wallet + all trade execution via the TWAK MCP server (`swap`, quotes, balances, competition registration) |
-| **BNB AI Agent SDK** | ARIA is registered as an on-chain ERC-8004 agent identity on BSC |
+|---|---|
+| **CMC Agent Hub** (MCP) | The entire signal layer: quotes & multi-timeframe momentum, global metrics (Fear & Greed, BTC dominance, altcoin season), market-cap TA, trending narratives, derivatives, and per-token **RSI / MACD / Fibonacci** |
+| **Trust Wallet Agent Kit** | Self-custody agent wallet + all execution: spot swaps on BNB Chain via the TWAK MCP server (`swap`, quotes, balances, competition registration) |
+| **BNB Smart Chain** | The on-chain venue for every trade; ARIA reads, decides, and executes end-to-end on-chain |
+
+📄 Full strategy write-up: [docs/STRATEGY.md](docs/STRATEGY.md)
 
 ## 🏗️ Architecture
 
@@ -80,74 +80,60 @@ Track 1 is ranked on **% return with a ~30% max-drawdown disqualification gate**
 aria-agent/
 ├── aria/
 │   ├── signals/          # CMC Agent Hub MCP client — signals only, no trading logic
-│   ├── brain/            # LLM regime synthesis → validated Decision schema
-│   ├── strategies/       # propose-only: narrative rotation, preservation (+ disabled MR)
-│   ├── safety/           # circuit breaker latch, compliance heartbeat, trading window
-│   ├── execution/        # the ONLY module that moves money — TWAK MCP client
-│   ├── state/            # SQLite: decisions (full audit), trades, portfolio snapshots
-│   ├── api.py            # FastAPI — dashboard's read window + operator controls
-│   └── main.py           # the loop: fetch → reason → gate → veto → execute → log
+│   ├── regime.py         # cached macro read → global risk posture
+│   ├── brain/            # the LLM JUDGE (Claude) — approves/rejects one candidate
+│   ├── strategies/       # propose-only: mean_reversion, breakout, narrative_rotation,
+│   │                     #   preservation + per-candidate RSI/Fibonacci confirmation
+│   ├── safety/           # circuit breaker, fee gate, trailing stop, compliance, window
+│   ├── execution/        # the ONLY module that moves money — TWAK client + paper engine
+│   ├── state/            # SQLite: decisions (full audit), trades, portfolio, price history
+│   ├── api.py            # FastAPI — dashboard read window + operator controls
+│   └── main.py           # the two-speed loop: fetch → exits → gates → confirm → judge → execute
 ├── dashboard/            # React + Vite + Tailwind: landing page + live terminal
-├── tests/                # 110+ tests incl. circuit-breaker integration (runs on fixtures)
-├── probes/               # vendor-API probes (re-runnable; how we mapped the real APIs)
-└── docs/DESIGN.md        # design rules & competition notes
+├── tests/                # 190 tests incl. circuit-breaker integration (run on fixtures)
+└── docs/                 # STRATEGY.md, DESIGN.md
 ```
-
-## 🔄 The Agent Loop
-
-Every cycle (default 30 min):
-
-1. **Fetch** — live signals from CMC Agent Hub (failure policy: no signals → no trading; 3 consecutive failures → close to stables)
-2. **Reason** — the LLM synthesizes the regime from the evidence, cites which signals drove the call, proposes at most one action
-3. **Gate** — the mode's strategy concretizes the idea through deterministic gates (eligibility, liquidity, momentum); a hallucinated token cannot survive
-4. **Veto** — the safety layer validates against the breaker, caps, and floors; vetoes become logged holds
-5. **Execute** — quote → impact check → spot swap via TWAK on BSC
-6. **Log** — every decision (including "do nothing") recorded with the full reasoning chain
-
-## 📊 Dashboard
-
-`/` is the story; `/dashboard` is the terminal: current regime + the LLM's cited reasoning, portfolio curve plotted against the 20% halt and 30% DQ lines, the full decision log, and operator controls (competition window, emergency stop, halt release) — all changes apply within one cycle, no restarts.
 
 ## 🚀 Getting Started
 
 ```bash
 # 1. Clone
-git clone https://github.com/NueloSE/aria-agent.git
-cd aria-agent
+git clone https://github.com/NueloSE/aria-agent.git && cd aria-agent
 
 # 2. Python env (3.12+)
-python3.13 -m venv .venv
-.venv/bin/pip install -e . pytest pytest-asyncio fastapi 'uvicorn[standard]'
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 # 3. Secrets (copy template, fill in your keys)
-cp .env.example .env
+cp deploy/env.example .env
 
-# 4. Run the agent (dry-run: never executes trades)
-.venv/bin/python -m aria.main --dry-run
-
-# 5. Tests (fixtures only — no live calls, no keys needed)
+# 4. Tests (fixtures only — no live calls, no keys needed)
 SIGNALS_MODE=fixtures .venv/bin/pytest tests/ -q
 
-# 6. Dashboard (two terminals)
-.venv/bin/uvicorn aria.api:app --port 8000
-cd dashboard && npm install && npm run dev   # → http://localhost:5173
+# 5. Run the agent (dry-run: never executes)
+.venv/bin/python -m aria.main --dry-run
+
+# 6. Paper trading (simulated fills on live signals, no funds)
+BRAIN_MODE=live ./scripts/paper_trade.sh
 ```
 
-### Required environment variables
+Real execution requires `EXECUTION_MODE=live`, `NETWORK=mainnet`, **and** the absence of
+`--dry-run` — all three, by design. All secrets live in `.env` (git-ignored). The trading
+wallet is a dedicated wallet used exclusively for this hackathon.
 
-See [.env.example](.env.example) — Anthropic key (brain), CMC key (signals),
-TWAK wallet password (execution), plus risk parameters. Real execution additionally
-requires `EXECUTION_MODE=live`, `NETWORK=mainnet`, **and** the absence of `--dry-run` —
-all three, by design.
+## 📊 Dashboard
 
-> ⚠️ **Security:** All secrets live in `.env` (git-ignored). The trading wallet is a dedicated, freshly created wallet used exclusively for this hackathon.
+`/` is the story; `/dashboard` is the live terminal: portfolio value & return, realized /
+unrealized PnL, the risk posture and Fear & Greed, open positions marked against their
+take-profit / stop levels, a filterable decision log with the LLM judge's reasoning, the
+trade-performance ledger, and operator controls (window, emergency stop, halt release).
 
 ## 🏆 Hackathon Context
 
 - **Event:** BNB Hack: AI Trading Agent Edition (DoraHacks)
-- **Live trading window:** June 22–28, 2026 on BSC — spot-only, via the TWAK swap interface
-- **Scoring:** % return (start → end capital), with a ~30% max-drawdown disqualification gate
-- **Rules encoded in the agent:** official 149-token eligible list, minimum 1 trade/day, stay-deployed requirement, competition window gating
+- **Live window:** June 22–28, 2026 on BNB Chain — **spot-only**, via the TWAK swap interface
+- **Scoring:** % return (start → end), with a ~30% max-drawdown disqualification gate
+- **Confirmed cost model:** ~0.15% round-trip (organizer-set, simulated)
+- **Rules encoded in the agent:** official eligible-token list, minimum 1 trade/day, stay-deployed, competition-window gating
 
 ## 📜 License
 
@@ -155,4 +141,5 @@ MIT
 
 ## ⚠️ Disclaimer
 
-ARIA is experimental software built for a hackathon. It is not financial advice and not a production trading system. Trading cryptocurrencies involves substantial risk of loss. Use at your own risk.
+ARIA is experimental software built for a hackathon. It is not financial advice and not a
+production trading system. Trading cryptocurrencies involves substantial risk of loss.
