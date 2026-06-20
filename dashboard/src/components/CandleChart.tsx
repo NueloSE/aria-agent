@@ -22,6 +22,18 @@ const TIMEFRAMES: { label: string; bucket: number }[] = [
 
 const REFRESH_MS = 30_000;
 
+// lightweight-charts parses colors itself and rejects oklch(), so resolve each brand
+// token to an rgb() string by letting the browser compute it on a throwaway element.
+function themeColor(varName: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = `var(${varName})`;
+  probe.style.display = "none";
+  document.body.appendChild(probe);
+  const rgb = getComputedStyle(probe).color;
+  probe.remove();
+  return rgb || "rgb(148,148,160)";
+}
+
 function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -65,29 +77,31 @@ export function CandleChart() {
       autoSize: true,
       layout: {
         background: { color: "transparent" },
-        textColor: cssVar("--muted-foreground"),
+        textColor: themeColor("--muted-foreground"),
         fontFamily: cssVar("--font-mono") || "monospace",
         attributionLogo: false,
       },
       grid: {
-        vertLines: { color: cssVar("--border") },
-        horzLines: { color: cssVar("--border") },
+        vertLines: { color: themeColor("--border") },
+        horzLines: { color: themeColor("--border") },
       },
-      rightPriceScale: { borderColor: cssVar("--border") },
+      rightPriceScale: { borderColor: themeColor("--border") },
       timeScale: {
-        borderColor: cssVar("--border"),
+        borderColor: themeColor("--border"),
         timeVisible: true,
         secondsVisible: false,
       },
       crosshair: { mode: 0 },
     });
+    const gain = themeColor("--gain");
+    const loss = themeColor("--loss");
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: cssVar("--gain"),
-      downColor: cssVar("--loss"),
-      wickUpColor: cssVar("--gain"),
-      wickDownColor: cssVar("--loss"),
-      borderUpColor: cssVar("--gain"),
-      borderDownColor: cssVar("--loss"),
+      upColor: gain,
+      downColor: loss,
+      wickUpColor: gain,
+      wickDownColor: loss,
+      borderUpColor: gain,
+      borderDownColor: loss,
     });
     chartRef.current = chart;
     seriesRef.current = series;
