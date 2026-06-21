@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Decision } from "../lib/api";
 import { pct, timeAgo, utcShort } from "../lib/format";
 import { ChevronDown, Ban, CircleSlash } from "lucide-react";
@@ -17,6 +18,7 @@ const ACTION_TONE: Record<string, string> = {
 };
 
 type Filter = "actions" | "rejected" | "all";
+type Row = { kind: "row"; d: Decision } | { kind: "collapsed"; n: number };
 
 const isAction = (d: Decision) => d.action !== "hold";
 const isRejection = (d: Decision) =>
@@ -41,6 +43,14 @@ export function DecisionLog({
   noteworthy?: Decision[];
 }) {
   const [filter, setFilter] = useState<Filter>("actions");
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const note = useMemo(
     () => noteworthy ?? decisions.filter(isNoteworthy),
@@ -57,11 +67,11 @@ export function DecisionLog({
   );
 
   // Build the visible row list. "all" collapses consecutive quiet holds into one summary row.
-  const rows = useMemo(() => {
+  const rows: Row[] = useMemo(() => {
     if (filter === "actions") return note.filter(isAction).map((d) => ({ kind: "row" as const, d }));
     if (filter === "rejected") return note.filter(isRejection).map((d) => ({ kind: "row" as const, d }));
 
-    const out: Array<{ kind: "row"; d: Decision } | { kind: "collapsed"; n: number }> = [];
+    const out: Row[] = [];
     let run = 0;
     for (const d of decisions) {
       if (isNoteworthy(d)) {
@@ -72,6 +82,19 @@ export function DecisionLog({
     if (run) out.push({ kind: "collapsed", n: run });
     return out;
   }, [decisions, note, filter]);
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 45,
+    overscan: 10,
+    // re-keys measurements when the filter changes the row set
+    getItemKey: (i) => {
+      const r = rows[i];
+      return r.kind === "collapsed" ? `c-${i}` : r.d.cycle_id;
+    },
+  });
 
   if (decisions.length === 0 && note.length === 0) {
     return (
@@ -98,18 +121,35 @@ export function DecisionLog({
               : "Nothing here yet."}
         </p>
       ) : (
-        <ul className="divide-y divide-border">
-          {rows.map((r, i) =>
-            r.kind === "collapsed" ? (
-              <li key={`c${i}`} className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground">
-                <CircleSlash size={11} aria-hidden className="opacity-50" />
-                {r.n} quiet {r.n === 1 ? "tick" : "ticks"} held — no setup
-              </li>
-            ) : (
-              <DecisionRow key={r.d.cycle_id} d={r.d} />
-            ),
-          )}
-        </ul>
+        <div ref={scrollRef} className="max-h-[28rem] overflow-y-auto">
+          <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+            {virtualizer.getVirtualItems().map((vi) => {
+              const r = rows[vi.index];
+              return (
+                <div
+                  key={vi.key}
+                  data-index={vi.index}
+                  ref={virtualizer.measureElement}
+                  className="absolute left-0 top-0 w-full border-b border-border"
+                  style={{ transform: `translateY(${vi.start}px)` }}
+                >
+                  {r.kind === "collapsed" ? (
+                    <div className="flex items-center gap-2 px-4 py-1.5 text-[11px] text-muted-foreground">
+                      <CircleSlash size={11} aria-hidden className="opacity-50" />
+                      {r.n} quiet {r.n === 1 ? "tick" : "ticks"} held — no setup
+                    </div>
+                  ) : (
+                    <DecisionRow
+                      d={r.d}
+                      open={openIds.has(r.d.cycle_id)}
+                      onToggle={() => toggle(r.d.cycle_id)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -132,17 +172,16 @@ function Tab({ id, cur, set, label, n }: { id: Filter; cur: Filter; set: (f: Fil
   );
 }
 
-function DecisionRow({ d }: { d: Decision }) {
-  const [open, setOpen] = useState(false);
+function DecisionRow({ d, open, onToggle }: { d: Decision; open: boolean; onToggle: () => void }) {
   const parts = d.reasoning.split(" | strategy: ");
   const judged = parts.find((p) => /judge:/i.test(p));
   const rejected = isRejection(d);
 
   return (
-    <li>
+    <div>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={onToggle}
         aria-expanded={open}
         className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       >
@@ -181,7 +220,7 @@ function DecisionRow({ d }: { d: Decision }) {
           </div>
         </div>
       )}
-    </li>
+    </div>
   );
 }
 
