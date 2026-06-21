@@ -152,7 +152,8 @@ def performance() -> dict:
     snap = _rows(s.conn, "SELECT total_value_usd, peak_value_usd FROM portfolio_snapshots"
                          " ORDER BY id DESC LIMIT 1")
     total_value = snap[0]["total_value_usd"] if snap else None
-    start = config.PAPER_START_USD
+    recorded_start = s.get_state("start_value_usd")
+    start = float(recorded_start) if recorded_start else config.PAPER_START_USD
     return {
         "total_value_usd": total_value,
         "start_value_usd": start,

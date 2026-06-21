@@ -186,6 +186,33 @@ async def compliance_roundtrip(amount_usd: float, store: Store, cycle_id: str,
     return ExecutionResult(leg2.status, f"roundtrip: {leg1.detail} | {leg2.detail}")
 
 
+# BSC contract addresses for tokens we actively hold.
+# get_token_holdings returns empty on this wallet; get_balance with explicit
+# contract addresses is the reliable fallback (probed 2026-06-21).
+_BSC_CONTRACTS: dict[str, str] = {
+    "USDT": "0x55d398326f99059fF775485246999027B3197955",
+    "ETH":  "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",  # WETH on BSC
+}
+
+
+async def _query_known_balances(twak: "TwakClient") -> list[dict]:
+    """Fallback: query each known token contract directly via get_balance."""
+    items = []
+    for sym, addr in _BSC_CONTRACTS.items():
+        try:
+            r = await twak.call("get_balance", {
+                "address": config.AGENT_WALLET, "chain": config.CHAIN,
+                "tokenAddress": addr,
+            })
+            raw = r.get("amounts", {}).get("total", "0") if isinstance(r, dict) else "0"
+            amount = float(raw) / 1e18
+            if amount > 0:
+                items.append({"symbol": sym, "balance": amount})
+        except Exception as exc:  # noqa: BLE001
+            log.warning("get_balance fallback failed for %s: %s", sym, exc)
+    return items
+
+
 # --- Portfolio reconciliation (startup + every cycle in live mode) ----------------
 
 async def reconcile_portfolio(store: Store,
@@ -203,6 +230,10 @@ async def reconcile_portfolio(store: Store,
     )
     items = holdings if isinstance(holdings, list) else holdings.get("tokens", []) \
         if isinstance(holdings, dict) else []
+
+    # get_token_holdings returns {tokens:[]} on this wallet — fall back to per-contract queries.
+    if not items:
+        items = await _query_known_balances(twak)
 
     prices = prices or {}
     stable_usd = 0.0

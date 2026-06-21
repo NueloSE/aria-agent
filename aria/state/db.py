@@ -158,6 +158,9 @@ class Store:
                 p.trades_today,
             ),
         )
+        # Capture starting capital on the very first snapshot — no manual config needed.
+        if p.total_value_usd > 0 and not self.get_state("start_value_usd"):
+            self.set_state("start_value_usd", str(p.total_value_usd))
         self.conn.commit()
 
     # --- Agent state (halt latch etc.) ---------------------------------------

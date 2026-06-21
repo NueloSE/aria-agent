@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = [
+  "pip install -e '.[dev]'",
+  "npm install -g @trustwallet/cli"
+]
+
+[start]
+cmd = "bash deploy/railway-start.sh"

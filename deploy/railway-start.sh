@@ -9,6 +9,21 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Restore twak credentials and wallet from Railway env vars.
+# The Railway container is ephemeral — ~/.twak/ is wiped on every redeploy.
+# Store the contents of ~/.twak/credentials.json and ~/.twak/wallet.json
+# as TWAK_CREDENTIALS_JSON and TWAK_WALLET_JSON in Railway Variables.
+if [ -n "${TWAK_CREDENTIALS_JSON:-}" ]; then
+  mkdir -p ~/.twak
+  printf '%s' "$TWAK_CREDENTIALS_JSON" > ~/.twak/credentials.json
+  echo "[railway-start] twak credentials restored"
+fi
+if [ -n "${TWAK_WALLET_JSON:-}" ]; then
+  mkdir -p ~/.twak
+  printf '%s' "$TWAK_WALLET_JSON" > ~/.twak/wallet.json
+  echo "[railway-start] twak wallet restored"
+fi
+
 PORT="${PORT:-8000}"
 PY="${PYTHON:-python}"   # Railway's nixpython provides `python`; override locally
 AGENT_RESTART_SEC="${AGENT_RESTART_SEC:-10}"
