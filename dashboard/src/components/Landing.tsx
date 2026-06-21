@@ -180,7 +180,7 @@ export function Landing() {
 
       {/* Navbar */}
       <nav className="sticky top-0 z-30 border-b border-transparent backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 sm:px-8">
+        <div className="flex w-full items-center justify-between px-6 py-3.5 sm:px-10 lg:px-16 2xl:px-24">
           <a href="/" aria-label="ARIA home" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Logo size={30} />
             <span className="font-serif text-2xl tracking-tight">ARIA</span>
