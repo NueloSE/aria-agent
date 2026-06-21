@@ -66,7 +66,10 @@ const REGIMES = [
 ];
 
 const SPECS = [
-  { n: "149", l: "eligible BEP-20 tokens — the hard outer gate on every trade" },
+  {
+    n: "149",
+    l: "eligible BEP-20 tokens — the hard outer gate on every trade",
+  },
   { n: "≤ 15%", l: "of the book in any single position" },
   { n: "≤ 6", l: "concurrent open positions" },
   { n: "0.60", l: "minimum LLM-judge confidence to act" },
@@ -89,33 +92,79 @@ const CHROMA_PLAYS: ChromaItem[] = REGIMES.map((r, i) => {
 });
 
 const PIPELINE = [
-  { k: "Fetch", v: "Live signals from CMC Agent Hub — sentiment, market-cap TA, derivatives, narratives, macro events" },
-  { k: "Read regime", v: "A coarse risk posture is derived from the macro read; the LLM synthesizes the regime from conflicting evidence" },
-  { k: "Gate", v: "Deterministic strategy gates find candidates: official 149-token list, liquidity floor, RSI / Fibonacci confirmation" },
-  { k: "Judge", v: "The LLM judges that single candidate — approve, reject, or trim size. It can never invent a trade" },
-  { k: "Veto", v: "The safety layer overrides everything — drawdown breaker, position caps, fee-aware min-edge, confidence floor" },
-  { k: "Execute", v: "Spot swap via Trust Wallet Agent Kit on BNB Smart Chain. Every decision logged — including doing nothing" },
+  {
+    k: "Fetch",
+    v: "Live signals from CMC Agent Hub — sentiment, market-cap TA, derivatives, narratives, macro events",
+  },
+  {
+    k: "Read regime",
+    v: "A coarse risk posture is derived from the macro read; the LLM synthesizes the regime from conflicting evidence",
+  },
+  {
+    k: "Gate",
+    v: "Deterministic strategy gates find candidates: official 149-token list, liquidity floor, RSI / Fibonacci confirmation",
+  },
+  {
+    k: "Judge",
+    v: "The LLM judges that single candidate — approve, reject, or trim size. It can never invent a trade",
+  },
+  {
+    k: "Veto",
+    v: "The safety layer overrides everything — drawdown breaker, position caps, fee-aware min-edge, confidence floor",
+  },
+  {
+    k: "Execute",
+    v: "Spot swap via Trust Wallet Agent Kit on BNB Smart Chain. Every decision logged — including doing nothing",
+  },
 ];
 
 const STATS = [
-  { n: "20%", label: "drawdown → automatic halt: close everything, require manual restart" },
-  { n: "30%", label: "competition disqualification gate — ARIA halts well before it" },
-  { n: "100%", label: "of decisions logged with full reasoning — including every hold" },
+  {
+    n: "20%",
+    label:
+      "drawdown → automatic halt: close everything, require manual restart",
+  },
+  {
+    n: "30%",
+    label: "competition disqualification gate — ARIA halts well before it",
+  },
+  {
+    n: "100%",
+    label: "of decisions logged with full reasoning — including every hold",
+  },
 ];
 
 // Trust Wallet has no Simple Icon — a clean shield mark in currentColor to match the set.
 function TrustWalletMark() {
   return (
-    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      aria-hidden
+    >
       <path d="M12 2.2 3.8 5.4v6.1c0 5.3 3.5 8.2 8.2 10.3 4.7-2.1 8.2-5 8.2-10.3V5.4L12 2.2Zm0 2.4 6 2.3v4.6c0 4-2.4 6.2-6 7.9V4.6Z" />
     </svg>
   );
 }
 
 const SPONSORS: LogoItem[] = [
-  { node: <SiCoinmarketcap />, title: "CoinMarketCap", href: "https://coinmarketcap.com" },
-  { node: <SiBnbchain />, title: "BNB Chain", href: "https://www.bnbchain.org" },
-  { node: <TrustWalletMark />, title: "Trust Wallet", href: "https://trustwallet.com" },
+  {
+    node: <SiCoinmarketcap />,
+    title: "CoinMarketCap",
+    href: "https://coinmarketcap.com",
+  },
+  {
+    node: <SiBnbchain />,
+    title: "BNB Chain",
+    href: "https://www.bnbchain.org",
+  },
+  {
+    node: <TrustWalletMark />,
+    title: "Trust Wallet",
+    href: "https://trustwallet.com",
+  },
   { node: <SiClaude />, title: "Claude", href: "https://www.anthropic.com" },
 ];
 
@@ -126,7 +175,11 @@ function renderSponsor(item: LogoItem) {
     "node" in item ? (
       <span className="logoloop__node">{item.node}</span>
     ) : (
-      <img src={item.src} alt={item.alt ?? ""} style={{ height: "1em", width: "auto" }} />
+      <img
+        src={item.src}
+        alt={item.alt ?? ""}
+        style={{ height: "1em", width: "auto" }}
+      />
     );
   const inner = (
     <span className="flex items-center gap-2.5 whitespace-nowrap">
@@ -204,22 +257,33 @@ export function Landing() {
               "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
             backgroundSize: "52px 52px",
             opacity: 0.25,
-            maskImage: "radial-gradient(ellipse 75% 55% at 50% 0%, black, transparent)",
-            WebkitMaskImage: "radial-gradient(ellipse 75% 55% at 50% 0%, black, transparent)",
+            maskImage:
+              "radial-gradient(ellipse 75% 55% at 50% 0%, black, transparent)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 75% 55% at 50% 0%, black, transparent)",
           }}
         />
       </div>
 
       {/* Navbar */}
-      <nav className="sticky top-0 z-30 border-b border-transparent backdrop-blur-md">
+      <nav className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-md">
         <div className="flex w-full items-center justify-between px-6 py-3.5 sm:px-10 lg:px-16 2xl:px-24">
-          <a href="/" aria-label="ARIA home" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <a
+            href="/"
+            aria-label="ARIA home"
+            className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <Logo size={30} />
             <span className="font-serif text-2xl tracking-tight">ARIA</span>
           </a>
 
           <div className="hidden md:block">
-            <GooeyNav items={NAV_LINKS} particleCount={12} animationTime={560} colors={[1, 2, 3, 4]} />
+            <GooeyNav
+              items={NAV_LINKS}
+              particleCount={12}
+              animationTime={560}
+              colors={[1, 2, 3, 4]}
+            />
           </div>
 
           <div className="hidden items-center gap-2.5 md:flex">
@@ -256,7 +320,10 @@ export function Landing() {
               type="button"
               aria-label="Close menu"
               className="fixed inset-0 z-40"
-              style={{ background: "oklch(0.11 0.01 260 / 0.55)", backdropFilter: "blur(4px)" }}
+              style={{
+                background: "oklch(0.11 0.01 260 / 0.55)",
+                backdropFilter: "blur(4px)",
+              }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -267,7 +334,10 @@ export function Landing() {
               aria-modal="true"
               aria-label="Menu"
               className="fixed right-0 top-0 z-50 flex h-dvh flex-col border-l border-border bg-card"
-              style={{ width: "min(88vw, 360px)", boxShadow: "-12px 0 48px oklch(0 0 0 / 0.35)" }}
+              style={{
+                width: "min(88vw, 360px)",
+                boxShadow: "-12px 0 48px oklch(0 0 0 / 0.35)",
+              }}
               initial={reduce ? { x: 0 } : { x: "100%" }}
               animate={{ x: 0 }}
               exit={reduce ? { opacity: 0 } : { x: "100%" }}
@@ -297,7 +367,11 @@ export function Landing() {
                     className="rounded-md px-3 py-2.5 text-base font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     initial={reduce ? undefined : { opacity: 0, x: 16 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.18 + i * 0.07, duration: 0.35, ease: EASE }}
+                    transition={{
+                      delay: 0.18 + i * 0.07,
+                      duration: 0.35,
+                      ease: EASE,
+                    }}
                   >
                     {l.label}
                   </motion.a>
@@ -323,7 +397,7 @@ export function Landing() {
       </AnimatePresence>
 
       {/* Hero */}
-      <header className="relative z-[1] mx-auto max-w-7xl px-5 pt-16 sm:px-8 sm:pt-24">
+      <header className="relative z-[1] mx-auto max-w-7xl px-5 pt-28 sm:px-8 sm:pt-32">
         <div className="mx-auto max-w-3xl text-center">
           <motion.div
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 16 }}
@@ -365,11 +439,15 @@ export function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.16, duration: 0.6, ease: EASE }}
             className="mx-auto mt-6 max-w-xl text-foreground/90"
-            style={{ fontSize: "clamp(0.95rem, 2.2vw, 1.15rem)", lineHeight: 1.65 }}
+            style={{
+              fontSize: "clamp(0.95rem, 2.2vw, 1.15rem)",
+              lineHeight: 1.65,
+            }}
           >
-            An autonomous spot-trading agent for BNB Chain. The deterministic gates find the
-            setup, the LLM only judges it, and the safety layer outranks them both. Zero drama,
-            full audit trail — every move logged, including doing nothing.
+            An autonomous spot-trading agent for BNB Chain. The deterministic
+            gates find the setup, the LLM only judges it, and the safety layer
+            outranks them both. Zero drama, full audit trail — every move
+            logged, including doing nothing.
           </motion.p>
 
           <motion.div
@@ -384,7 +462,11 @@ export function Landing() {
               style={{ boxShadow: "0 8px 32px oklch(0.6 0.18 280 / 0.35)" }}
             >
               Open the live dashboard
-              <ArrowRight size={18} aria-hidden className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+              <ArrowRight
+                size={18}
+                aria-hidden
+                className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+              />
             </a>
             <a
               href={GH}
@@ -420,15 +502,23 @@ export function Landing() {
 
       {/* Story sections */}
       <main className="relative z-[1] mx-auto max-w-6xl space-y-24 px-5 py-24 sm:px-8">
-        <section id="regimes" aria-labelledby="regimes-h" className="scroll-mt-24">
+        <section
+          id="regimes"
+          aria-labelledby="regimes-h"
+          className="scroll-mt-24"
+        >
           <motion.div {...fadeUp(0)}>
-            <h2 id="regimes-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
+            <h2
+              id="regimes-h"
+              className="text-2xl font-semibold tracking-tight sm:text-3xl text-center"
+            >
               Four plays, across the whole cycle
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
-              ARIA reads the regime from live signals — never off a single indicator — then runs
-              the strategy built for it. Deterministic gates find the candidate and per-token
-              RSI / Fibonacci confirm it; sitting in stables is a deliberate play, not a default.
+              ARIA reads the regime from live signals — never off a single
+              indicator — then runs the strategy built for it. Deterministic
+              gates find the candidate and per-token RSI / Fibonacci confirm it;
+              sitting in stables is a deliberate play, not a default.
             </p>
           </motion.div>
           <motion.div {...fadeUp(1)} className="mt-8">
@@ -438,27 +528,33 @@ export function Landing() {
 
         <section id="cycle" aria-labelledby="cycle-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
-            <h2 id="cycle-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
+            <h2
+              id="cycle-h"
+              className="text-2xl font-semibold tracking-tight sm:text-3xl text-center"
+            >
               A two-speed loop
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
-              A fast deterministic loop manages exits and scans for setups every cycle; the LLM is
-              event-driven, called only when a real candidate needs judgment.
+              A fast deterministic loop manages exits and scans for setups every
+              cycle; the LLM is event-driven, called only when a real candidate
+              needs judgment.
             </p>
           </motion.div>
-          <ol className="mt-8 space-y-0">
+          <ol className="mt-8 space-y-0 ">
             {PIPELINE.map((s, i) => (
               <motion.li
                 key={s.k}
                 {...fadeUp(i)}
-                className="flex gap-5 border-l border-border pb-7 pl-7 last:border-l-transparent last:pb-0"
+                className="flex   gap-5 border-l border-border pb-7 pl-7 last:border-l-transparent last:pb-0"
               >
-                <div className="-ml-[39px] flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-card font-mono text-xs text-primary">
+                <div className="-ml-[39px]  flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-card font-mono text-xs text-primary">
                   {i + 1}
                 </div>
                 <div className="-mt-0.5">
                   <h3 className="text-base font-semibold">{s.k}</h3>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{s.v}</p>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {s.v}
+                  </p>
                 </div>
               </motion.li>
             ))}
@@ -467,19 +563,31 @@ export function Landing() {
 
         <section aria-labelledby="specs-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
-            <h2 id="specs-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
+            <h2
+              id="specs-h"
+              className="text-2xl font-semibold tracking-tight sm:text-3xl text-center"
+            >
               Engineered to a spec
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
-              Every guardrail is a config value, never buried in strategy logic — and the LLM
-              (Claude) only ever judges a setup the math already found.
+              Every guardrail is a config value, never buried in strategy logic
+              — and the LLM (Claude) only ever judges a setup the math already
+              found.
             </p>
           </motion.div>
           <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
             {SPECS.map((s, i) => (
-              <motion.div key={s.n} {...fadeUp(i)} className="bg-card/70 p-5 backdrop-blur">
-                <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{s.n}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{s.l}</p>
+              <motion.div
+                key={s.n}
+                {...fadeUp(i)}
+                className="bg-card/70 p-5 backdrop-blur"
+              >
+                <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">
+                  {s.n}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {s.l}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -491,7 +599,10 @@ export function Landing() {
           {...fadeUp(0)}
           className="scroll-mt-24 overflow-hidden rounded-3xl border border-border bg-card/60 p-8 backdrop-blur sm:p-10"
         >
-          <h2 id="safety-h" className="flex items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h2
+            id="safety-h"
+            className="flex items-center justify-center gap-2 text-2xlxl font-semibold tracking-tight sm:text-3xl"
+          >
             <ShieldCheck size={22} aria-hidden className="text-primary" />
             The rule engine outranks the model
           </h2>
@@ -501,26 +612,34 @@ export function Landing() {
                 <p className="bg-accent-gradient bg-clip-text font-mono text-4xl font-semibold tabular-nums text-transparent">
                   {s.n}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{s.label}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {s.label}
+                </p>
               </div>
             ))}
           </div>
           <p className="mt-8 border-t border-border pt-6 text-sm leading-6 text-muted-foreground">
-            The LLM recommends; it cannot execute. Every order passes eligibility, liquidity,
-            stop-loss, position-size, and fee-aware min-edge gates — and the circuit breaker was
-            unit-tested before the agent ever touched a live quote. A compliance heartbeat,
-            outside the model's control, still fires the mandated one trade per day even while halted.
+            The LLM recommends; it cannot execute. Every order passes
+            eligibility, liquidity, stop-loss, position-size, and fee-aware
+            min-edge gates — and the circuit breaker was unit-tested before the
+            agent ever touched a live quote. A compliance heartbeat, outside the
+            model's control, still fires the mandated one trade per day even
+            while halted.
           </p>
         </motion.section>
 
         <section id="stack" aria-labelledby="stack-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
-            <h2 id="stack-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
+            <h2
+              id="stack-h"
+              className="text-2xl font-semibold tracking-tight sm:text-3xl text-center"
+            >
               Built on the full sponsor stack
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
-              CoinMarketCap for signals, Trust Wallet for execution, BNB Chain as the venue —
-              with Claude as the judge. Integrated end-to-end, not bolted on.
+              CoinMarketCap for signals, Trust Wallet for execution, BNB Chain
+              as the venue — with Claude as the judge. Integrated end-to-end,
+              not bolted on.
             </p>
           </motion.div>
           <motion.div
@@ -550,12 +669,18 @@ export function Landing() {
           <div
             aria-hidden
             className="absolute inset-0 -z-10"
-            style={{ background: "radial-gradient(60% 80% at 50% 0%, oklch(0.5 0.18 285 / 0.25) 0%, transparent 70%)" }}
+            style={{
+              background:
+                "radial-gradient(60% 80% at 50% 0%, oklch(0.5 0.18 285 / 0.25) 0%, transparent 70%)",
+            }}
           />
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">Watch it think, live</h2>
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
+            Watch it think, live
+          </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Portfolio value, open positions against their take-profit and stop levels, the risk
-            posture, and the judge's reasoning for every decision — updating in real time.
+            Portfolio value, open positions against their take-profit and stop
+            levels, the risk posture, and the judge's reasoning for every
+            decision — updating in real time.
           </p>
           <a
             href="/dashboard"
@@ -570,22 +695,35 @@ export function Landing() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-7">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Logo size={18} />
-            <span className="text-sm">ARIA — Adaptive Regime Intelligence Agent</span>
+            <span className="text-sm">
+              ARIA — Adaptive Regime Intelligence Agent
+            </span>
           </div>
-          <p className="font-mono text-xs text-muted-foreground">agent 0xA935…9B9B · BSC</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            agent 0xA935…9B9B · BSC
+          </p>
         </div>
       </footer>
     </div>
   );
 }
 
-function HeroStat({ icon: Icon, value, label }: { icon: typeof Gauge; value: string; label: string }) {
+function HeroStat({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: typeof Gauge;
+  value: string;
+  label: string;
+}) {
   return (
-    <div className="bg-card/70 p-5 backdrop-blur">
+    <div className="flex flex-col items-center bg-card/70 p-5 text-center backdrop-blur">
       <Icon size={16} aria-hidden className="text-primary" />
-      <p className="mt-2 font-mono text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-2 font-mono text-2xl font-semibold tabular-nums">
+        {value}
+      </p>
       <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }
-
