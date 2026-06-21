@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import LightRays from "./LightRays";
+import LogoLoop, { type LogoItem } from "./LogoLoop";
+import { SiCoinmarketcap, SiBnbchain, SiClaude } from "react-icons/si";
 
 /* Landing — premium hero + story sections, themed to brand.md (Quantum Lab tokens,
    Instrument Serif used once for the hero headline, a single primary gradient region). */
@@ -66,6 +68,22 @@ const STATS = [
   { n: "20%", label: "drawdown → automatic halt: close everything, require manual restart" },
   { n: "30%", label: "competition disqualification gate — ARIA halts well before it" },
   { n: "100%", label: "of decisions logged with full reasoning — including every hold" },
+];
+
+// Trust Wallet has no Simple Icon — a clean shield mark in currentColor to match the set.
+function TrustWalletMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden>
+      <path d="M12 2.2 3.8 5.4v6.1c0 5.3 3.5 8.2 8.2 10.3 4.7-2.1 8.2-5 8.2-10.3V5.4L12 2.2Zm0 2.4 6 2.3v4.6c0 4-2.4 6.2-6 7.9V4.6Z" />
+    </svg>
+  );
+}
+
+const SPONSORS: LogoItem[] = [
+  { node: <SiCoinmarketcap />, title: "CoinMarketCap", href: "https://coinmarketcap.com" },
+  { node: <SiBnbchain />, title: "BNB Chain", href: "https://www.bnbchain.org" },
+  { node: <TrustWalletMark />, title: "Trust Wallet", href: "https://trustwallet.com" },
+  { node: <SiClaude />, title: "Claude", href: "https://www.anthropic.com" },
 ];
 
 export function Landing() {
@@ -428,32 +446,27 @@ export function Landing() {
               Built on the full sponsor stack
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              All three sponsor tools, integrated end-to-end — not bolted on.
+              CoinMarketCap for signals, Trust Wallet for execution, BNB Chain as the venue —
+              with Claude as the judge. Integrated end-to-end, not bolted on.
             </p>
           </motion.div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <StackCard
-              i={0}
-              fadeUp={fadeUp}
-              icon={<Eye size={16} aria-hidden />}
-              name="CMC Agent Hub"
-              role="Every market signal via MCP — sentiment, technicals, narratives, derivatives, macro."
+          <motion.div
+            {...fadeUp(1)}
+            className="relative mt-10 overflow-hidden rounded-2xl border border-border bg-card/40 py-10 text-foreground/75 backdrop-blur"
+          >
+            <LogoLoop
+              logos={SPONSORS}
+              speed={55}
+              direction="left"
+              logoHeight={40}
+              gap={88}
+              scaleOnHover
+              pauseOnHover
+              fadeOut
+              fadeOutColor="#08080F"
+              ariaLabel="Sponsor and technology stack"
             />
-            <StackCard
-              i={1}
-              fadeUp={fadeUp}
-              icon={<Route size={16} aria-hidden />}
-              name="Trust Wallet Agent Kit"
-              role="Self-custody agent wallet and every swap, through the TWAK MCP server."
-            />
-            <StackCard
-              i={2}
-              fadeUp={fadeUp}
-              icon={<Logo size={16} />}
-              name="BNB AI Agent SDK"
-              role="ARIA is registered on-chain as an ERC-8004 agent identity on BSC."
-            />
-          </div>
+          </motion.div>
         </section>
 
         <motion.section
@@ -502,29 +515,3 @@ function HeroStat({ icon: Icon, value, label }: { icon: typeof Gauge; value: str
   );
 }
 
-function StackCard({
-  icon,
-  name,
-  role,
-  i,
-  fadeUp,
-}: {
-  icon: React.ReactNode;
-  name: string;
-  role: string;
-  i: number;
-  fadeUp: (i: number) => object;
-}) {
-  return (
-    <motion.div
-      {...fadeUp(i)}
-      className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur transition-colors hover:border-primary/40"
-    >
-      <div className="mb-2.5 flex items-center gap-2 text-primary">
-        {icon}
-        <h3 className="text-base font-medium text-foreground">{name}</h3>
-      </div>
-      <p className="text-sm leading-6 text-muted-foreground">{role}</p>
-    </motion.div>
-  );
-}
