@@ -7,6 +7,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { ChevronDown, Search } from "lucide-react";
 import { api, type CandlesResponse } from "../lib/api";
 import { usd } from "../lib/format";
 
@@ -149,16 +150,7 @@ export function CandleChart() {
         </div>
         <div className="flex items-center gap-1.5">
           {symbols.length > 1 && (
-            <select
-              aria-label="Token"
-              value={data?.symbol ?? ""}
-              onChange={(e) => setSymbol(e.target.value)}
-              className="rounded-md border border-border bg-input px-2 py-1 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {symbols.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <TokenSelect value={data?.symbol ?? ""} options={symbols} onChange={setSymbol} />
           )}
           <div className="flex items-center rounded-md border border-border p-0.5" role="tablist" aria-label="Timeframe">
             {TIMEFRAMES.map((tf) => (
@@ -189,6 +181,101 @@ export function CandleChart() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* Searchable, brand-styled token picker — replaces the native <select> (52 tokens). */
+function TokenSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (s: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    inputRef.current?.focus();
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const q = query.trim().toUpperCase();
+  const filtered = q ? options.filter((o) => o.includes(q)) : options;
+
+  const pick = (s: string) => {
+    onChange(s);
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <div className="relative" ref={rootRef}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-input px-2.5 py-1 font-mono text-xs text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {value || "—"}
+        <ChevronDown size={13} aria-hidden className={`text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-1.5 w-48 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+          <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+            <Search size={13} aria-hidden className="shrink-0 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search token…"
+              className="w-full bg-transparent font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+          </div>
+          <ul role="listbox" className="max-h-60 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-xs text-muted-foreground">No match</li>
+            ) : (
+              filtered.map((s) => (
+                <li key={s}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={s === value}
+                    onClick={() => pick(s)}
+                    className={`flex w-full items-center justify-between px-3 py-1.5 text-left font-mono text-xs transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none ${
+                      s === value ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    {s}
+                    {s === value && <span className="text-primary">•</span>}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
