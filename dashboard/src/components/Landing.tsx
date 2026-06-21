@@ -16,7 +16,6 @@ import {
 import { Logo } from "./Logo";
 import Prism from "./Prism";
 import DecryptedText from "./DecryptedText";
-import ChromaGrid, { type ChromaItem } from "./ChromaGrid";
 import GooeyNav from "./GooeyNav";
 import LogoLoop, { type LogoItem } from "./LogoLoop";
 import { SiCoinmarketcap, SiBnbchain, SiClaude } from "react-icons/si";
@@ -66,30 +65,18 @@ const REGIMES = [
 ];
 
 const SPECS = [
-  {
-    n: "149",
-    l: "eligible BEP-20 tokens — the hard outer gate on every trade",
-  },
-  { n: "≤ 15%", l: "of the book in any single position" },
-  { n: "≤ 6", l: "concurrent open positions" },
-  { n: "0.60", l: "minimum LLM-judge confidence to act" },
-  { n: "~0.15%", l: "round-trip cost modeled into the min-edge gate" },
-  { n: "30–90s", l: "fast loop · 10-min cached macro read" },
+  { cap: "Eligible universe", val: "149", desc: "BEP-20 tokens — the hard outer gate", tone: "text-[#1AA6FF]" },
+  { cap: "Drawdown halt", val: "20%", desc: "auto-flatten, far inside the 30% DQ line", tone: "text-warn" },
+  { cap: "Max position size", val: "≤ 15%", desc: "per-position cap of the book", tone: "text-gain" },
+  { cap: "Concurrent positions", val: "≤ 6", desc: "open at once", tone: "text-primary" },
+  { cap: "Conviction floor", val: "0.60", desc: "min LLM-judge confidence to act", tone: "text-[#1AA6FF]" },
+  { cap: "Round-trip cost", val: "~0.15%", desc: "modeled into the min-edge gate", tone: "text-warn" },
+  { cap: "Loop cadence", val: "30–90s", desc: "fast loop · 10-min macro read", tone: "text-primary" },
+  { cap: "Daily minimum", val: "1 trade", desc: "compliance heartbeat, even while halted", tone: "text-gain" },
 ];
 
-// Brand hex per play (lightweight-charts/CSS can't read our oklch tokens).
-const PLAY_COLORS = ["#9DA0FF", "#00CA85", "#E6AC3D", "#FF5251"];
-const CHROMA_PLAYS: ChromaItem[] = REGIMES.map((r, i) => {
-  const Icon = r.icon;
-  return {
-    label: r.name,
-    title: r.mode,
-    subtitle: r.copy,
-    icon: <Icon size={13} aria-hidden />,
-    borderColor: PLAY_COLORS[i],
-    gradient: `linear-gradient(330deg, ${PLAY_COLORS[i]}, #0c0c14 72%)`,
-  };
-});
+// Accent tint per play (icon colour only — cards stay dark/uniform).
+const PLAY_TONE = ["text-primary", "text-gain", "text-warn", "text-loss"];
 
 const PIPELINE = [
   {
@@ -266,8 +253,8 @@ export function Landing() {
       </div>
 
       {/* Navbar */}
-      <nav className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-md">
-        <div className="flex w-full items-center justify-between px-6 py-3.5 sm:px-10 lg:px-16 2xl:px-24">
+      <nav className="fixed inset-x-0 top-0 z-30 overflow-hidden border-b border-border/60 bg-background/80 backdrop-blur-md">
+        <div className="relative flex w-full items-center justify-between px-6 py-3.5 sm:px-10 lg:px-16 2xl:px-24">
           <a
             href="/"
             aria-label="ARIA home"
@@ -277,7 +264,7 @@ export function Landing() {
             <span className="font-serif text-2xl tracking-tight">ARIA</span>
           </a>
 
-          <div className="hidden md:block">
+          <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block">
             <GooeyNav
               items={NAV_LINKS}
               particleCount={12}
@@ -521,9 +508,27 @@ export function Landing() {
               sitting in stables is a deliberate play, not a default.
             </p>
           </motion.div>
-          <motion.div {...fadeUp(1)} className="mt-8">
-            <ChromaGrid items={CHROMA_PLAYS} radius={320} columns={4} />
-          </motion.div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {REGIMES.map((r, i) => {
+              const Icon = r.icon;
+              return (
+                <motion.div
+                  key={r.mode}
+                  {...fadeUp(i)}
+                  className="rounded-2xl border border-border bg-card/50 p-6 backdrop-blur transition-colors hover:border-border/80"
+                >
+                  <div className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/40">
+                    <Icon size={18} aria-hidden className={PLAY_TONE[i]} />
+                  </div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {r.name}
+                  </p>
+                  <h3 className="mt-1 text-lg font-medium">{r.mode}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{r.copy}</p>
+                </motion.div>
+              );
+            })}
+          </div>
         </section>
 
         <section id="cycle" aria-labelledby="cycle-h" className="scroll-mt-24">
@@ -540,22 +545,20 @@ export function Landing() {
               needs judgment.
             </p>
           </motion.div>
-          <ol className="mt-8 space-y-0 ">
+          <ol className="mx-auto mt-8 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {PIPELINE.map((s, i) => (
               <motion.li
                 key={s.k}
                 {...fadeUp(i)}
-                className="flex   gap-5 border-l border-border pb-7 pl-7 last:border-l-transparent last:pb-0"
+                className="rounded-2xl border border-border bg-card/50 p-6 text-center backdrop-blur transition-colors hover:border-border/80"
               >
-                <div className="-ml-[39px]  flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-card font-mono text-xs text-primary">
-                  {i + 1}
-                </div>
-                <div className="-mt-0.5">
-                  <h3 className="text-base font-semibold">{s.k}</h3>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {s.v}
-                  </p>
-                </div>
+                <span className="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/40 font-mono text-xs text-primary">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className="mt-3 text-base font-semibold">{s.k}</h3>
+                <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
+                  {s.v}
+                </p>
               </motion.li>
             ))}
           </ol>
@@ -575,19 +578,20 @@ export function Landing() {
               found.
             </p>
           </motion.div>
-          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
+          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {SPECS.map((s, i) => (
               <motion.div
-                key={s.n}
+                key={s.cap}
                 {...fadeUp(i)}
-                className="bg-card/70 p-5 backdrop-blur"
+                className="rounded-xl border border-border bg-card/40 p-5 backdrop-blur transition-colors hover:border-border/80"
               >
-                <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">
-                  {s.n}
+                <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  {s.cap}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {s.l}
+                <p className={`mt-2.5 font-mono text-2xl font-semibold tabular-nums ${s.tone}`}>
+                  {s.val}
                 </p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{s.desc}</p>
               </motion.div>
             ))}
           </div>
