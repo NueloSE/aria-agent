@@ -107,15 +107,22 @@ async def _swap(store: Store, cycle_id: str, kind: str,
             log.warning("swap attempt %d failed, retrying once: %s", attempts, exc)
 
     detail: dict[str, Any] = result if isinstance(result, dict) else {"raw": str(result)}
+    # Swap result shape: {success, txHash, summary:"X TOK -> Y TOK", provider, explorer}
+    # Quote shape (get_swap_quote): {success, input:"X TOK", output:"Y TOK", ...}
+    # Normalise: prefer summary; fall back to input/output for forward-compat.
+    summary = detail.get("summary", "")
+    parts = summary.split(" -> ") if " -> " in summary else []
+    in_str = parts[0] if len(parts) == 2 else str(detail.get("input", amount))
+    out_str = parts[1] if len(parts) == 2 else str(detail.get("output", ""))
+    tx_hash = str(detail.get("txHash") or detail.get("hash") or "")
     store.log_trade(
         cycle_id, kind, from_token, to_token, status="confirmed",
-        from_amount=str(detail.get("input", amount)),
-        to_amount=str(detail.get("output", "")),
-        tx_hash=str(detail.get("txHash") or detail.get("hash") or ""),
+        from_amount=in_str,
+        to_amount=out_str,
+        tx_hash=tx_hash,
     )
-    log.info("SWAP %s -> %s | %s -> %s", from_token, to_token,
-             detail.get("input"), detail.get("output"))
-    return ExecutionResult("executed", f"{detail.get('input')} -> {detail.get('output')}")
+    log.info("SWAP %s -> %s | %s (tx %s)", from_token, to_token, summary or f"{in_str}->{out_str}", tx_hash[:10])
+    return ExecutionResult("executed", summary or f"{in_str} -> {out_str}")
 
 
 # --- Decision execution ---------------------------------------------------------

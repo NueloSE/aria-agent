@@ -55,9 +55,10 @@ async def load_portfolio(store: Store, prices: "dict[str, float] | None" = None)
 async def maybe_heartbeat(store: Store, portfolio: PortfolioState, dry_run: bool,
                           cycle_id: str) -> None:
     """Competition daily-trade rule. Outside LLM control; runs even while HALTED and
-    even on signal-failure ticks — going silent for a day is a rule violation."""
-    allowed, _ = window.trading_allowed(store)
-    if not allowed:
+    even on signal-failure ticks — going silent for a day is a rule violation.
+    Only an explicit emergency stop (override='off') suppresses it; the competition
+    window gate and 'no-window-configured' denial apply to strategy trades, not here."""
+    if store.get_state(window.KEY_OVERRIDE) == "off":
         return
     trades_today = store.trades_today_utc()
     if not compliance.heartbeat_due(trades_today=trades_today):
@@ -166,16 +167,9 @@ async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
         if exits:
             portfolio = await load_portfolio(store, prices)
 
-    # 1c. Competition window / operator override.
-    allowed, why = window.trading_allowed(store)
-    if not allowed:
-        decision = hold_decision(f"trading gated: {why}", regime="high_risk")
-        store.log_decision(decision, safety_verdict="window_closed")
-        store.snapshot_portfolio(portfolio)
-        log.info("tick %s | window closed: %s", decision.cycle_id[:8], why)
-        return 0, bool(portfolio.positions)
-
     # 0b. Circuit breaker — mechanical, brain NOT consulted on a breach.
+    # Runs BEFORE the trading-window gate so a drawdown breach always triggers the halt
+    # even when the competition window is not yet configured (e.g. live mode, pre-start).
     if safety.check_drawdown(portfolio):
         safety.trigger_halt(store, f"drawdown {portfolio.drawdown_pct:.2f}% >= {config.HALT_DRAWDOWN_PCT}%")
         decision = Decision(regime="high_risk", mode="preservation", action="close_all",
@@ -187,6 +181,15 @@ async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
         store.set_outcome(decision.cycle_id, str(result))
         await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
         return signal_failures, bool(portfolio.positions)
+
+    # 1c. Competition window / operator override.
+    allowed, why = window.trading_allowed(store)
+    if not allowed:
+        decision = hold_decision(f"trading gated: {why}", regime="high_risk")
+        store.log_decision(decision, safety_verdict="window_closed")
+        store.snapshot_portfolio(portfolio)
+        log.info("tick %s | window closed: %s", decision.cycle_id[:8], why)
+        return 0, bool(portfolio.positions)
 
     # 2. Refresh the cached macro read + global posture (slow cadence) and splice in
     #    fresh quotes so the entry judge sees current prices on a recent macro picture.
