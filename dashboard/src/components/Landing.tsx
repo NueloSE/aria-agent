@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "./Logo";
-import LightRays from "./LightRays";
+import Prism from "./Prism";
 import LogoLoop, { type LogoItem } from "./LogoLoop";
 import { SiCoinmarketcap, SiBnbchain, SiClaude } from "react-icons/si";
 
@@ -136,18 +136,17 @@ export function Landing() {
         <div className="bg-brand-gradient absolute inset-0" />
         {!reduce && (
           <div className="absolute inset-x-0 top-0 h-[820px] isolate opacity-70">
-            <LightRays
-              raysOrigin="top-center"
-              raysColor="#B89EFF"
-              raysSpeed={0.9}
-              lightSpread={1.1}
-              rayLength={1.3}
-              fadeDistance={1.1}
-              saturation={0.7}
-              followMouse
-              mouseInfluence={0.08}
-              noiseAmount={0.06}
-              distortion={0.03}
+            <Prism
+              animationType="rotate"
+              timeScale={0.5}
+              height={3.5}
+              baseWidth={5.5}
+              scale={3.6}
+              hueShift={0}
+              colorFrequency={1}
+              noise={0.4}
+              glow={1}
+              suspendWhenOffscreen
             />
           </div>
         )}
@@ -300,7 +299,7 @@ export function Landing() {
 
       {/* Hero */}
       <header className="relative z-[1] mx-auto max-w-7xl px-5 pt-16 sm:px-8 sm:pt-24">
-        <div className="max-w-3xl">
+        <div className="mx-auto max-w-3xl text-center">
           <motion.div
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -332,7 +331,7 @@ export function Landing() {
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.16, duration: 0.6, ease: EASE }}
-            className="mt-6 max-w-xl text-muted-foreground"
+            className="mx-auto mt-6 max-w-xl text-muted-foreground"
             style={{ fontSize: "clamp(0.95rem, 2.2vw, 1.15rem)", lineHeight: 1.65 }}
           >
             An autonomous spot-trading agent for BNB Chain. The deterministic gates find the
@@ -344,7 +343,7 @@ export function Landing() {
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.26, duration: 0.6, ease: EASE }}
-            className="mt-9 flex flex-wrap items-center gap-3"
+            className="mt-9 flex flex-wrap items-center justify-center gap-3"
           >
             <a
               href="/dashboard"
@@ -390,10 +389,10 @@ export function Landing() {
       <main className="relative z-[1] mx-auto max-w-6xl space-y-24 px-5 py-24 sm:px-8">
         <section id="regimes" aria-labelledby="regimes-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
-            <h2 id="regimes-h" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 id="regimes-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
               Three regimes, three plays
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+            <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
               The regime is read from live signals — never off a single indicator — and capital
               is routed to the strategy built for it. Treating <em>not trading</em> as a position
               is the fourth play.
@@ -418,10 +417,10 @@ export function Landing() {
 
         <section id="cycle" aria-labelledby="cycle-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
-            <h2 id="cycle-h" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 id="cycle-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
               A two-speed loop
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+            <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
               A fast deterministic loop manages exits and scans for setups every cycle; the LLM is
               event-driven, called only when a real candidate needs judgment.
             </p>
@@ -474,10 +473,10 @@ export function Landing() {
 
         <section id="stack" aria-labelledby="stack-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
-            <h2 id="stack-h" className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 id="stack-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
               Built on the full sponsor stack
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+            <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
               CoinMarketCap for signals, Trust Wallet for execution, BNB Chain as the venue —
               with Claude as the judge. Integrated end-to-end, not bolted on.
             </p>
@@ -511,7 +510,7 @@ export function Landing() {
             className="absolute inset-0 -z-10"
             style={{ background: "radial-gradient(60% 80% at 50% 0%, oklch(0.5 0.18 285 / 0.25) 0%, transparent 70%)" }}
           />
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Watch it think, live</h2>
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">Watch it think, live</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
             Portfolio value, open positions against their take-profit and stop levels, the risk
             posture, and the judge's reasoning for every decision — updating in real time.
