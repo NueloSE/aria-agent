@@ -136,7 +136,7 @@ export function Landing() {
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="bg-brand-gradient absolute inset-0" />
         {!reduce && (
-          <div className="absolute inset-x-0 top-0 h-[820px] isolate opacity-70">
+          <div className="absolute inset-x-0 top-0 h-[820px] isolate opacity-50">
             <Prism
               animationType="rotate"
               timeScale={0.5}
@@ -315,7 +315,7 @@ export function Landing() {
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.06, duration: 0.7, ease: EASE }}
-            className="font-serif"
+            className="font-serif font-bold"
             style={{
               fontSize: "clamp(2.4rem, 6vw, 4.2rem)",
               lineHeight: 1.05,
@@ -340,7 +340,7 @@ export function Landing() {
             initial={reduce ? { opacity: 1 } : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.16, duration: 0.6, ease: EASE }}
-            className="mx-auto mt-6 max-w-xl text-muted-foreground"
+            className="mx-auto mt-6 max-w-xl text-foreground/90"
             style={{ fontSize: "clamp(0.95rem, 2.2vw, 1.15rem)", lineHeight: 1.65 }}
           >
             An autonomous spot-trading agent for BNB Chain. The deterministic gates find the

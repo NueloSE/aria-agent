@@ -100,9 +100,11 @@
   }
 }
 
+/* Use background-image (not the `background` shorthand) so these never reset
+   background-clip — otherwise `bg-clip-text` renders a filled box instead of text. */
 @utility bg-brand-gradient {
-  background: var(--gradient-bg);
+  background-image: var(--gradient-bg);
 }
 @utility bg-accent-gradient {
-  background: var(--gradient-accent);
+  background-image: var(--gradient-accent);
 }
