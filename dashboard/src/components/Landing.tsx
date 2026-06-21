@@ -86,6 +86,38 @@ const SPONSORS: LogoItem[] = [
   { node: <SiClaude />, title: "Claude", href: "https://www.anthropic.com" },
 ];
 
+// Render each loop item as the icon plus its name.
+function renderSponsor(item: LogoItem) {
+  const label = item.title ?? "";
+  const mark =
+    "node" in item ? (
+      <span className="logoloop__node">{item.node}</span>
+    ) : (
+      <img src={item.src} alt={item.alt ?? ""} style={{ height: "1em", width: "auto" }} />
+    );
+  const inner = (
+    <span className="flex items-center gap-2.5 whitespace-nowrap">
+      {mark}
+      <span className="font-medium tracking-tight" style={{ fontSize: "16px" }}>
+        {label}
+      </span>
+    </span>
+  );
+  return item.href ? (
+    <a
+      className="logoloop__link"
+      href={item.href}
+      target="_blank"
+      rel="noreferrer noopener"
+      aria-label={label}
+    >
+      {inner}
+    </a>
+  ) : (
+    inner
+  );
+}
+
 export function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -456,10 +488,11 @@ export function Landing() {
           >
             <LogoLoop
               logos={SPONSORS}
+              renderItem={renderSponsor}
               speed={55}
               direction="left"
-              logoHeight={40}
-              gap={88}
+              logoHeight={34}
+              gap={72}
               scaleOnHover
               pauseOnHover
               fadeOut
