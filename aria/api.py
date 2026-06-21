@@ -168,11 +168,19 @@ def performance() -> dict:
 
 
 @app.get("/api/decisions")
-def decisions(limit: int = 50) -> list[dict]:
+def decisions(limit: int = 50, noteworthy: bool = False) -> list[dict]:
+    # noteworthy = the decisions that actually did something: a trade (action != hold)
+    # or a judge rejection / safety veto. Lets the dashboard surface real trades even
+    # when they're thousands of quiet holds back in history.
+    where = (
+        " WHERE action != 'hold'"
+        " OR safety_verdict LIKE 'vetoed%'"
+        " OR reasoning LIKE '%judge rejected%'"
+    ) if noteworthy else ""
     rows = _rows(store().conn,
                  "SELECT cycle_id, timestamp, regime, mode, action, token_symbol,"
                  " size_pct, confidence, safety_verdict, outcome, reasoning"
-                 " FROM decisions ORDER BY timestamp DESC LIMIT ?", (min(limit, 500),))
+                 f" FROM decisions{where} ORDER BY timestamp DESC LIMIT ?", (min(limit, 500),))
     return rows
 
 

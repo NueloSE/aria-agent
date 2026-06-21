@@ -31,29 +31,39 @@ function verdictTone(verdict: string | null): string {
   return "text-muted-foreground";
 }
 
-export function DecisionLog({ decisions }: { decisions: Decision[] }) {
+export function DecisionLog({
+  decisions,
+  noteworthy,
+}: {
+  decisions: Decision[];
+  // The agent's actual trades + rejections, fetched separately so they show even when
+  // they're thousands of quiet holds back. Falls back to filtering the recent window.
+  noteworthy?: Decision[];
+}) {
   const [filter, setFilter] = useState<Filter>("actions");
+
+  const note = useMemo(
+    () => noteworthy ?? decisions.filter(isNoteworthy),
+    [noteworthy, decisions],
+  );
 
   const counts = useMemo(
     () => ({
-      actions: decisions.filter(isNoteworthy).length,
-      rejected: decisions.filter(isRejection).length,
+      actions: note.filter(isAction).length,
+      rejected: note.filter(isRejection).length,
       all: decisions.length,
     }),
-    [decisions],
+    [note, decisions],
   );
 
   // Build the visible row list. "all" collapses consecutive quiet holds into one summary row.
   const rows = useMemo(() => {
-    const src =
-      filter === "actions" ? decisions.filter(isNoteworthy)
-      : filter === "rejected" ? decisions.filter(isRejection)
-      : decisions;
-    if (filter !== "all") return src.map((d) => ({ kind: "row" as const, d }));
+    if (filter === "actions") return note.filter(isAction).map((d) => ({ kind: "row" as const, d }));
+    if (filter === "rejected") return note.filter(isRejection).map((d) => ({ kind: "row" as const, d }));
 
     const out: Array<{ kind: "row"; d: Decision } | { kind: "collapsed"; n: number }> = [];
     let run = 0;
-    for (const d of src) {
+    for (const d of decisions) {
       if (isNoteworthy(d)) {
         if (run) { out.push({ kind: "collapsed", n: run }); run = 0; }
         out.push({ kind: "row", d });
@@ -61,9 +71,9 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
     }
     if (run) out.push({ kind: "collapsed", n: run });
     return out;
-  }, [decisions, filter]);
+  }, [decisions, note, filter]);
 
-  if (decisions.length === 0) {
+  if (decisions.length === 0 && note.length === 0) {
     return (
       <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
         No decisions yet — start the agent loop to populate this log.
@@ -81,7 +91,11 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
 
       {rows.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-          {filter === "actions" ? "No trades or vetoes yet — ARIA is scanning and holding." : "Nothing here yet."}
+          {filter === "actions"
+            ? "No trades yet — ARIA is scanning and holding."
+            : filter === "rejected"
+              ? "No judge rejections yet."
+              : "Nothing here yet."}
         </p>
       ) : (
         <ul className="divide-y divide-border">

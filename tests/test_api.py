@@ -33,6 +33,28 @@ class TestReads:
         assert len(rows) == 1
         assert rows[0]["reasoning"] == "seed decision"
 
+    def test_decisions_noteworthy_filter(self, client):
+        from aria.models import Decision
+        s = Store(config.DB_PATH)
+        # a real trade decision + a judge rejection, amid the seeded hold
+        s.log_decision(
+            Decision(regime="trending", mode="narrative_rotation", action="buy",
+                     token_symbol="CAKE", size_pct=10.0, stop_loss_pct=5.0,
+                     confidence=0.8, reasoning="strategy: breakout | judge: approved"),
+            safety_verdict="approved")
+        s.log_decision(
+            Decision(regime="ranging", mode="mean_reversion", action="hold",
+                     token_symbol=None, size_pct=0.0, confidence=0.4,
+                     reasoning="strategy: mr | judge rejected: low conviction"),
+            safety_verdict="vetoed_confidence")
+        all_rows = client.get("/api/decisions").json()
+        assert len(all_rows) == 3
+        note = client.get("/api/decisions?noteworthy=1").json()
+        actions = [r["action"] for r in note]
+        assert "buy" in actions          # the trade is surfaced
+        assert "hold" in actions         # the rejection (a hold) is surfaced too
+        assert len(note) == 2            # the plain seed hold is excluded
+
     def test_positions_empty_ok(self, client):
         assert client.get("/api/positions").json() == []
 

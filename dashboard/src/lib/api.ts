@@ -138,7 +138,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   status: () => request<Status>("/api/status"),
-  decisions: (limit = 100) => request<Decision[]>(`/api/decisions?limit=${limit}`),
+  decisions: (limit = 100, noteworthy = false) =>
+    request<Decision[]>(`/api/decisions?limit=${limit}${noteworthy ? "&noteworthy=1" : ""}`),
   portfolio: (limit = 1000) => request<PortfolioPoint[]>(`/api/portfolio?limit=${limit}`),
   trades: (limit = 50) => request<Trade[]>(`/api/trades?limit=${limit}`),
   positions: () => request<Position[]>("/api/positions"),

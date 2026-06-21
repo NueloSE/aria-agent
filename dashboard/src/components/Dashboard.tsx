@@ -25,6 +25,7 @@ const POLL_MS = 10_000;
 export function Dashboard() {
   const [status, setStatus] = useState<Status | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [noteworthy, setNoteworthy] = useState<Decision[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioPoint[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -34,9 +35,10 @@ export function Dashboard() {
 
   const refresh = useCallback(async () => {
     try {
-      const [s, d, p, t, pos, pf] = await Promise.all([
+      const [s, d, n, p, t, pos, pf] = await Promise.all([
         api.status(),
         api.decisions(150),
+        api.decisions(100, true), // noteworthy: actual trades + rejections, even if old
         api.portfolio(1000),
         api.trades(100),
         api.positions(),
@@ -44,6 +46,7 @@ export function Dashboard() {
       ]);
       setStatus(s);
       setDecisions(d);
+      setNoteworthy(n);
       setPortfolio(p);
       setTrades(t);
       setPositions(pos);
@@ -160,7 +163,7 @@ export function Dashboard() {
 
             <section aria-labelledby="log-h">
               <h2 id="log-h" className="mb-2 text-base font-medium">Decision log</h2>
-              <DecisionLog decisions={decisions} />
+              <DecisionLog decisions={decisions} noteworthy={noteworthy} />
             </section>
 
             <section aria-labelledby="trades-h">
