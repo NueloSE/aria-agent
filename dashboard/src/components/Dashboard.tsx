@@ -137,12 +137,12 @@ export function Dashboard() {
             </div>
 
             <section aria-labelledby="pnl-h">
-              <h2 id="pnl-h" className="mb-2 text-base font-medium">Portfolio value vs. risk gates</h2>
+              <h2 id="pnl-h" className="mb-2 text-base font-medium">Portfolio value</h2>
               <div className="rounded-xl border border-border bg-card p-4">
-                <PnlChart points={portfolio} haltPct={status.config.halt_drawdown_pct} dqPct={status.config.max_drawdown_pct} />
+                <PnlChart points={portfolio} startValue={perf?.start_value_usd} />
                 <p className="mt-2 text-xs text-muted-foreground">
-                  <span className="text-warn">— —</span> halt ({status.config.halt_drawdown_pct}% from peak) ·{" "}
-                  <span className="text-loss">— —</span> disqualification ({status.config.max_drawdown_pct}% from peak)
+                  Equity over time. Drawdown vs. the halt ({status.config.halt_drawdown_pct}%) and
+                  disqualification ({status.config.max_drawdown_pct}%) gates is shown in the gauge above.
                 </p>
               </div>
             </section>
