@@ -17,6 +17,7 @@ import { Logo } from "./Logo";
 import Prism from "./Prism";
 import DecryptedText from "./DecryptedText";
 import ChromaGrid, { type ChromaItem } from "./ChromaGrid";
+import GooeyNav from "./GooeyNav";
 import LogoLoop, { type LogoItem } from "./LogoLoop";
 import { SiCoinmarketcap, SiBnbchain, SiClaude } from "react-icons/si";
 
@@ -217,16 +218,8 @@ export function Landing() {
             <span className="font-serif text-2xl tracking-tight">ARIA</span>
           </a>
 
-          <div className="hidden items-center gap-7 md:flex">
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                className="rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {l.label}
-              </a>
-            ))}
+          <div className="hidden md:block">
+            <GooeyNav items={NAV_LINKS} particleCount={12} animationTime={560} colors={[1, 2, 3, 4]} />
           </div>
 
           <div className="hidden items-center gap-2.5 md:flex">
