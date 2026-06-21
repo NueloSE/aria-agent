@@ -16,6 +16,7 @@ import {
 import { Logo } from "./Logo";
 import Prism from "./Prism";
 import DecryptedText from "./DecryptedText";
+import ChromaGrid, { type ChromaItem } from "./ChromaGrid";
 import LogoLoop, { type LogoItem } from "./LogoLoop";
 import { SiCoinmarketcap, SiBnbchain, SiClaude } from "react-icons/si";
 
@@ -71,6 +72,20 @@ const SPECS = [
   { n: "~0.15%", l: "round-trip cost modeled into the min-edge gate" },
   { n: "30–90s", l: "fast loop · 10-min cached macro read" },
 ];
+
+// Brand hex per play (lightweight-charts/CSS can't read our oklch tokens).
+const PLAY_COLORS = ["#9DA0FF", "#00CA85", "#E6AC3D", "#FF5251"];
+const CHROMA_PLAYS: ChromaItem[] = REGIMES.map((r, i) => {
+  const Icon = r.icon;
+  return {
+    label: r.name,
+    title: r.mode,
+    subtitle: r.copy,
+    icon: <Icon size={13} aria-hidden />,
+    borderColor: PLAY_COLORS[i],
+    gradient: `linear-gradient(330deg, ${PLAY_COLORS[i]}, #0c0c14 72%)`,
+  };
+});
 
 const PIPELINE = [
   { k: "Fetch", v: "Live signals from CMC Agent Hub — sentiment, market-cap TA, derivatives, narratives, macro events" },
@@ -423,21 +438,9 @@ export function Landing() {
               RSI / Fibonacci confirm it; sitting in stables is a deliberate play, not a default.
             </p>
           </motion.div>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {REGIMES.map((r, i) => (
-              <motion.div
-                key={r.name}
-                {...fadeUp(i)}
-                className="group rounded-2xl border border-border bg-card/60 p-6 backdrop-blur transition-colors hover:border-primary/40"
-              >
-                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-sm font-medium ${r.tone}`}>
-                  <r.icon size={14} aria-hidden /> {r.name}
-                </span>
-                <h3 className="mt-4 text-lg font-medium">{r.mode}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{r.copy}</p>
-              </motion.div>
-            ))}
-          </div>
+          <motion.div {...fadeUp(1)} className="mt-8">
+            <ChromaGrid items={CHROMA_PLAYS} radius={320} columns={4} />
+          </motion.div>
         </section>
 
         <section id="cycle" aria-labelledby="cycle-h" className="scroll-mt-24">
