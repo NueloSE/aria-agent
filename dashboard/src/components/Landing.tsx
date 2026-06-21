@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import Prism from "./Prism";
+import DecryptedText from "./DecryptedText";
 import LogoLoop, { type LogoItem } from "./LogoLoop";
 import { SiCoinmarketcap, SiBnbchain, SiClaude } from "react-icons/si";
 
@@ -321,7 +322,15 @@ export function Landing() {
               letterSpacing: "-0.015em",
             }}
           >
-            Reads the market's regime first.
+            <DecryptedText
+              text="Reads the market's regime first."
+              animateOn="view"
+              sequential
+              speed={38}
+              revealDirection="start"
+              parentClassName="block"
+              encryptedClassName="text-primary/70"
+            />
             <span className="block bg-accent-gradient bg-clip-text text-transparent">
               Then decides how to play it.
             </span>
