@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  Activity,
   ArrowRight,
   Eye,
   Gauge,
@@ -10,6 +9,7 @@ import {
   Route,
   ShieldCheck,
   Sparkles,
+  TrendingDown,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -34,26 +34,42 @@ const GH = "https://github.com/NueloSE/aria-agent";
 
 const REGIMES = [
   {
-    name: "Trending",
+    name: "Fearful · post-decline",
+    icon: TrendingDown,
+    tone: "text-primary border-primary/30 bg-primary/10",
+    mode: "Oversold reclaim",
+    copy: "Buys washed-out, quality blue chips turning back up on returning volume — RSI-confirmed. Never a falling knife; it waits for the bounce.",
+  },
+  {
+    name: "Recovering · trending",
     icon: TrendingUp,
     tone: "text-gain border-gain/30 bg-gain/10",
-    mode: "Narrative rotation",
-    copy: "Buys the strongest trending narrative's most liquid eligible token. Stop-loss on every entry.",
+    mode: "Breakout / momentum",
+    copy: "Buys quality tokens breaking up on real volume and not overextended. RSI-gated entry, Fibonacci take-profit.",
   },
   {
-    name: "Ranging",
-    icon: Activity,
+    name: "A hot sector runs",
+    icon: Sparkles,
     tone: "text-warn border-warn/30 bg-warn/10",
-    mode: "Stand aside",
-    copy: "No durable direction means no edge after costs. Doing nothing is the strategy.",
+    mode: "Narrative rotation",
+    copy: "Buys the strongest trending CMC narrative's most liquid eligible token, with a stop on every entry.",
   },
   {
-    name: "High risk",
+    name: "No edge",
     icon: ShieldCheck,
     tone: "text-loss border-loss/30 bg-loss/10",
     mode: "Capital preservation",
-    copy: "Closes to stables and waits. Surviving the week is most of winning it.",
+    copy: "Closes to stablecoins and waits. Surviving the week is most of winning it — a deliberate play, not a default.",
   },
+];
+
+const SPECS = [
+  { n: "149", l: "eligible BEP-20 tokens — the hard outer gate on every trade" },
+  { n: "≤ 15%", l: "of the book in any single position" },
+  { n: "≤ 6", l: "concurrent open positions" },
+  { n: "0.60", l: "minimum LLM-judge confidence to act" },
+  { n: "~0.15%", l: "round-trip cost modeled into the min-edge gate" },
+  { n: "30–90s", l: "fast loop · 10-min cached macro read" },
 ];
 
 const PIPELINE = [
@@ -387,7 +403,7 @@ export function Landing() {
           transition={{ delay: 0.34, duration: 0.7, ease: EASE }}
           className="mt-14 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4"
         >
-          <HeroStat icon={Gauge} value="4" label="market regimes" />
+          <HeroStat icon={Gauge} value="4" label="strategy plays" />
           <HeroStat icon={ShieldCheck} value="20%" label="auto-halt drawdown" />
           <HeroStat icon={Eye} value="100%" label="decisions logged" />
           <HeroStat icon={Route} value="3" label="sponsor tools integrated" />
@@ -399,15 +415,15 @@ export function Landing() {
         <section id="regimes" aria-labelledby="regimes-h" className="scroll-mt-24">
           <motion.div {...fadeUp(0)}>
             <h2 id="regimes-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
-              Three regimes, three plays
+              Four plays, across the whole cycle
             </h2>
             <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
-              The regime is read from live signals — never off a single indicator — and capital
-              is routed to the strategy built for it. Treating <em>not trading</em> as a position
-              is the fourth play.
+              ARIA reads the regime from live signals — never off a single indicator — then runs
+              the strategy built for it. Deterministic gates find the candidate and per-token
+              RSI / Fibonacci confirm it; sitting in stables is a deliberate play, not a default.
             </p>
           </motion.div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {REGIMES.map((r, i) => (
               <motion.div
                 key={r.name}
@@ -453,6 +469,26 @@ export function Landing() {
           </ol>
         </section>
 
+        <section aria-labelledby="specs-h" className="scroll-mt-24">
+          <motion.div {...fadeUp(0)}>
+            <h2 id="specs-h" className="text-2xl font-semibold tracking-tight sm:text-3xl text-center">
+              Engineered to a spec
+            </h2>
+            <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground sm:text-base">
+              Every guardrail is a config value, never buried in strategy logic — and the LLM
+              (Claude) only ever judges a setup the math already found.
+            </p>
+          </motion.div>
+          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
+            {SPECS.map((s, i) => (
+              <motion.div key={s.n} {...fadeUp(i)} className="bg-card/70 p-5 backdrop-blur">
+                <p className="font-mono text-2xl font-semibold tabular-nums text-foreground">{s.n}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{s.l}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
         <motion.section
           id="safety"
           aria-labelledby="safety-h"
@@ -476,7 +512,8 @@ export function Landing() {
           <p className="mt-8 border-t border-border pt-6 text-sm leading-6 text-muted-foreground">
             The LLM recommends; it cannot execute. Every order passes eligibility, liquidity,
             stop-loss, position-size, and fee-aware min-edge gates — and the circuit breaker was
-            unit-tested before the agent ever touched a live quote.
+            unit-tested before the agent ever touched a live quote. A compliance heartbeat,
+            outside the model's control, still fires the mandated one trade per day even while halted.
           </p>
         </motion.section>
 
