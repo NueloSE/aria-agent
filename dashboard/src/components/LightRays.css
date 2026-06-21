@@ -1,0 +1,9 @@
+.light-rays-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  pointer-events: none;
+  /* z-index 0 (not 3): keep the rays inside the hero backdrop, behind the content */
+  z-index: 0;
+  overflow: hidden;
+}

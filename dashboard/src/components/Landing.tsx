@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "./Logo";
+import LightRays from "./LightRays";
 
 /* Landing — premium hero + story sections, themed to brand.md (Quantum Lab tokens,
    Instrument Serif used once for the hero headline, a single primary gradient region). */
@@ -83,6 +84,23 @@ export function Landing() {
       {/* Layered backdrop: brand gradient + dual glow + faint grid, fading to bg */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="bg-brand-gradient absolute inset-0" />
+        {!reduce && (
+          <div className="absolute inset-x-0 top-0 h-[820px] isolate opacity-70">
+            <LightRays
+              raysOrigin="top-center"
+              raysColor="#B89EFF"
+              raysSpeed={0.9}
+              lightSpread={1.1}
+              rayLength={1.3}
+              fadeDistance={1.1}
+              saturation={0.7}
+              followMouse
+              mouseInfluence={0.08}
+              noiseAmount={0.06}
+              distortion={0.03}
+            />
+          </div>
+        )}
         <div
           className="absolute inset-0"
           style={{
