@@ -136,6 +136,34 @@ async def _swap(store: Store, cycle_id: str, kind: str,
         tx_hash=tx_hash,
     )
     log.info("SWAP %s -> %s | %s (tx %s)", from_token, to_token, summary or f"{in_str}->{out_str}", tx_hash[:10])
+
+    # Track live positions in DB so reconcile_portfolio can see them without
+    # needing on-chain contract addresses for every possible token.
+    if kind == "strategy":
+        if to_token not in config.STABLES and from_token in config.STABLES:
+            # Confirmed buy: record position
+            try:
+                out_amount, _ = parse_amount(out_str)
+                in_amount, _ = parse_amount(in_str)
+                entry_price = (in_amount / out_amount) if out_amount > 0 else 0.0
+                existing = store.get_state(f"live_pos:{to_token}")
+                if existing:
+                    import json as _json
+                    prev = _json.loads(existing)
+                    total_amt = prev["amount"] + out_amount
+                    avg_price = ((prev["amount"] * prev["entry_price"]) + (out_amount * entry_price)) / total_amt if total_amt else entry_price
+                    store.set_state(f"live_pos:{to_token}", _json.dumps({"amount": total_amt, "entry_price": avg_price}))
+                else:
+                    import json as _json
+                    store.set_state(f"live_pos:{to_token}", _json.dumps({"amount": out_amount, "entry_price": entry_price}))
+                log.info("live_pos recorded: %s amount=%.6f entry=%.4f", to_token, out_amount, entry_price)
+            except Exception as exc:
+                log.warning("failed to record live_pos for %s: %s", to_token, exc)
+        elif from_token not in config.STABLES and to_token in config.STABLES:
+            # Confirmed sell: clear position
+            store.clear_state(f"live_pos:{from_token}")
+            log.info("live_pos cleared: %s", from_token)
+
     return ExecutionResult("executed", summary or f"{in_str} -> {out_str}")
 
 
@@ -249,9 +277,24 @@ async def reconcile_portfolio(store: Store,
     items = holdings if isinstance(holdings, list) else holdings.get("tokens", []) \
         if isinstance(holdings, dict) else []
 
-    # get_token_holdings returns {tokens:[]} on this wallet — fall back to per-contract queries.
+    # get_token_holdings returns {tokens:[]} on this wallet — fall back to per-contract queries,
+    # then to DB-tracked live positions recorded after each confirmed swap.
     if not items:
         items = await _query_known_balances(twak)
+    if not items:
+        import json as _json
+        rows = store.conn.execute(
+            "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'"
+        ).fetchall()
+        for key, val in rows:
+            sym = key.split(":", 1)[1]
+            try:
+                pos = _json.loads(val)
+                items.append({"symbol": sym, "balance": pos["amount"], "_entry_price": pos["entry_price"]})
+            except Exception:
+                pass
+        if items:
+            log.info("reconcile: using %d DB-tracked live positions", len(items))
 
     prices = prices or {}
     stable_usd = 0.0
