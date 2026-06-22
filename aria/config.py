@@ -214,7 +214,7 @@ ELIGIBLE_SYMBOLS: frozenset[str] = frozenset(_eligible["symbols"])
 # eligible list; BNB/WBNB/BTC/BTCB are NOT eligible so they're absent by design.
 BLUE_CHIPS = (
     "ETH", "XRP", "TRX", "DOGE", "ADA", "LINK", "BCH", "TON", "LTC", "AVAX",
-    "SHIB", "DOT", "UNI", "ETC", "AAVE", "ATOM", "FIL", "INJ", "FET", "CAKE",
+    "SHIB", "DOT", "UNI", "ETC", "AAVE", "ATOM", "INJ", "FET", "CAKE",
     "ZEC", "LDO", "PENDLE", "AXS", "TWT", "COMP", "APE", "SNX", "KAVA", "SUSHI",
     "ZRO", "STG", "RAY", "BAT", "1INCH", "YFI", "ZIL", "DEXE", "ACH", "AXL",
     "PLUME", "ASTER", "LUNC", "BTT", "SFP", "FLOKI", "BONK", "PENGU", "WLFI", "IP",
