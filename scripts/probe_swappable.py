@@ -59,33 +59,39 @@ async def main() -> None:
     by_address: list[str] = []     # only works via contract address
     dead: list[str] = []           # no route either way
 
-    print(f"  {'TOKEN':6} {'SYMBOL':<10} {'ADDRESS':<10} detail")
+    addr_ok: list[str] = []   # routes correctly by address (what the agent now uses)
+    print(f"  {'TOKEN':6} {'BY-SYMBOL':<22} {'BY-ADDRESS':<28}")
     for sym in tokens:
         ok_sym, d_sym = await _quote(twak, sym)
         if ok_sym:
             by_symbol.append(sym)
-            print(f"  {sym:6} {'OK':<10} {'-':<10} {d_sym}")
-            continue
-        # symbol failed — retry by contract address
+        # Always also test by address — that's the path the agent uses now.
         addr = _BSC_CONTRACTS.get(sym)
         if not addr:
-            dead.append(sym)
-            print(f"  {sym:6} {d_sym:<10} {'no-addr':<10}")
+            (dead if not ok_sym else by_symbol)
+            print(f"  {sym:6} {(d_sym if not ok_sym else 'ok'):<22} {'(no contract)':<28}")
             continue
         ok_addr, d_addr = await _quote(twak, addr)
         if ok_addr:
-            by_address.append(sym)
-            print(f"  {sym:6} {d_sym:<10} {'OK':<10} {d_addr}")
+            addr_ok.append(sym)
+            if not ok_sym:
+                by_address.append(sym)
         else:
             dead.append(sym)
-            print(f"  {sym:6} {d_sym:<10} {d_addr:<10}")
+        sym_col = "ok" if ok_sym else d_sym
+        addr_col = f"OK {d_addr}" if ok_addr else f"FAIL {d_addr}"
+        print(f"  {sym:6} {sym_col:<22} {addr_col:<28}")
 
-    total = by_symbol + by_address
     print("\n=== RESULT ===")
-    print(f"Works by SYMBOL  ({len(by_symbol)}): {', '.join(by_symbol) or 'none'}")
-    print(f"Works by ADDRESS ({len(by_address)}): {', '.join(by_address) or 'none'}")
-    print(f"DEAD - no route  ({len(dead)}): {', '.join(dead) or 'none'}")
-    print(f"\nTOTAL tradeable: {len(total)} -> {', '.join(sorted(total))}")
+    print(f"Routes BY ADDRESS ({len(addr_ok)}): {', '.join(sorted(addr_ok)) or 'none'}")
+    print(f"   (the agent now swaps via address — this is the set that matters)")
+    print(f"DEAD - no route   ({len(dead)}): {', '.join(sorted(dead)) or 'none'}")
+    total = sorted(set(addr_ok) | set(s for s in by_symbol if s not in _BSC_CONTRACTS))
+    if len(addr_ok) == len(tokens):
+        print("\n*** ALL 16 route by address — safe to push. ***")
+    else:
+        missing = sorted(set(tokens) - set(addr_ok))
+        print(f"\n*** {len(missing)} do NOT route by address: {missing} — tell Claude before push. ***")
 
     if by_address:
         print("\n>>> Some tokens ONLY route by contract address. Tell Claude — the swap")
