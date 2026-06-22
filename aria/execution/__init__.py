@@ -292,52 +292,62 @@ async def reconcile_portfolio(store: Store,
     items = holdings if isinstance(holdings, list) else holdings.get("tokens", []) \
         if isinstance(holdings, dict) else []
 
-    # get_token_holdings returns {tokens:[]} on this wallet — fall back to per-contract queries,
-    # then to DB-tracked live positions recorded after each confirmed swap.
+    # get_token_holdings returns {tokens:[]} on this wallet. The reliable approach:
+    #  - STABLES (USDT): query on-chain (18 decimals, dependable).
+    #  - NON-STABLE positions: read from DB-tracked live_pos records, written with the
+    #    EXACT token amount parsed from each confirmed swap summary. This avoids the
+    #    per-token decimals problem (e.g. Binance-Peg DOGE uses 8 decimals, not 18) that
+    #    made confirmed buys invisible when divided by a hardcoded 1e18.
     if not items:
         items = await _query_known_balances(twak)
-    if not items:
-        import json as _json
-        rows = store.conn.execute(
-            "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'"
-        ).fetchall()
-        for key, val in rows:
-            sym = key.split(":", 1)[1]
-            try:
-                pos = _json.loads(val)
-                items.append({"symbol": sym, "balance": pos["amount"], "_entry_price": pos["entry_price"]})
-            except Exception:
-                pass
-        if items:
-            log.info("reconcile: using %d DB-tracked live positions", len(items))
 
     prices = prices or {}
     stable_usd = 0.0
     positions: list[Position] = []
     total = 0.0
+    seen_syms: set[str] = set()
+
+    # Stables only from the on-chain query (USDT decimals are 18 — safe).
     for item in items:
         if not isinstance(item, dict):
             continue
         sym = str(item.get("symbol", "")).upper()
+        if sym not in config.STABLES:
+            continue  # non-stable balances come from live_pos (decimals-safe)
         try:
             amount = float(item.get("balance") or item.get("amount") or 0)
         except (TypeError, ValueError):
             continue
         if amount <= 0:
             continue
-        if sym in config.STABLES:
-            stable_usd += amount
-            total += amount
-        else:
-            price = prices.get(sym)
-            if price is None:
-                log.warning("reconcile: no price for %s — valued at 0", sym)
-                price = 0.0
-            total += amount * price
-            positions.append(Position(
-                token_symbol=sym, amount=amount, entry_price_usd=price,
-                opened_at=datetime.now(timezone.utc),
-            ))
+        stable_usd += amount
+        total += amount
+        seen_syms.add(sym)
+
+    # Non-stable positions from the DB tracking (exact amounts, no decimals guessing).
+    import json as _json
+    rows = store.conn.execute(
+        "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'"
+    ).fetchall()
+    for key, val in rows:
+        sym = key.split(":", 1)[1].upper()
+        if sym in config.STABLES or sym in seen_syms:
+            continue
+        try:
+            pos = _json.loads(val)
+            amount = float(pos["amount"])
+        except (Exception,):  # noqa: BLE001
+            continue
+        if amount <= 0:
+            continue
+        price = prices.get(sym)
+        if price is None:
+            price = float(pos.get("entry_price") or 0.0)  # fall back to entry if unpriced
+        total += amount * price
+        positions.append(Position(
+            token_symbol=sym, amount=amount, entry_price_usd=price,
+            opened_at=datetime.now(timezone.utc),
+        ))
 
     # High-water mark lives in the DB so drawdown survives restarts
     prev_peak = float(store.get_state("peak_value_usd") or 0.0)
