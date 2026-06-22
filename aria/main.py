@@ -218,13 +218,18 @@ async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
     result = await execution.execute(decision, portfolio, store, dry_run=dry_run)
     store.set_outcome(decision.cycle_id, str(result))
 
-    # Cool down the token for 15 min on execution failure so the agent doesn't
-    # hammer the same token every cycle when swaps are failing.
-    if result.status == "failed" and decision.token_symbol:
-        from datetime import timedelta
-        until = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
-        store.set_cooldown(decision.token_symbol, until)
-        log.warning("execution failed for %s — cooling down 15 min", decision.token_symbol)
+    if decision.token_symbol:
+        if result.status == "failed":
+            # Failed swap: cool down 15 min so we don't retry every cycle
+            until = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+            store.set_cooldown(decision.token_symbol, until)
+            log.warning("execution failed for %s — cooling down 15 min", decision.token_symbol)
+        elif result.status == "executed" and decision.action == "buy":
+            # Successful buy: cool down 60 min so portfolio reconciliation has time
+            # to detect the position before we try to buy again
+            until = (datetime.now(timezone.utc) + timedelta(minutes=60)).isoformat()
+            store.set_cooldown(decision.token_symbol, until)
+            log.info("bought %s — cooling down 60 min before re-entry", decision.token_symbol)
 
     # 5. Compliance heartbeat (competition rule, independent of strategy).
     await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
