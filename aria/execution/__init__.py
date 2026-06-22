@@ -83,12 +83,22 @@ def parse_amount(s: object) -> tuple[float, str]:
 
 # --- Swap primitive --------------------------------------------------------------
 
+def _token_ref(symbol: str) -> str:
+    """Resolve a token symbol to its BSC contract address for swaps. TWAK's swap
+    aggregator only recognizes ~5 tokens by bare symbol (ATOM/AVAX/DOGE/ETH/LTC) and
+    returns TOKEN_NOT_FOUND for the rest (XRP/ADA/LINK/UNI/...) — but routes ALL of
+    them correctly by contract address (probed 2026-06-22). So always pass the address
+    when we have one; fall back to the bare symbol otherwise."""
+    return _BSC_CONTRACTS.get(symbol.upper(), symbol)
+
+
 async def _swap(store: Store, cycle_id: str, kind: str,
                 from_token: str, to_token: str, amount: str) -> ExecutionResult:
     """quote -> impact gate -> swap -> log. The only function that moves money."""
     twak = await get_twak()
     base = {"fromChain": config.CHAIN, "toChain": config.CHAIN,
-            "fromToken": from_token, "toToken": to_token, "amount": amount}
+            "fromToken": _token_ref(from_token), "toToken": _token_ref(to_token),
+            "amount": amount}
     try:
         quote = await twak.call("get_swap_quote", base)
     except TwakError as exc:
@@ -176,7 +186,8 @@ async def preflight_route(from_token: str, to_token: str, amount_usd: float) -> 
         return True, ""
     twak = await get_twak()
     base = {"fromChain": config.CHAIN, "toChain": config.CHAIN,
-            "fromToken": from_token, "toToken": to_token, "amount": f"{amount_usd:.2f}"}
+            "fromToken": _token_ref(from_token), "toToken": _token_ref(to_token),
+            "amount": f"{amount_usd:.2f}"}
     try:
         quote = await twak.call("get_swap_quote", base)
     except TwakError as exc:
