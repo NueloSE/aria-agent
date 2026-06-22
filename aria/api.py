@@ -85,12 +85,45 @@ def status() -> dict:
 _STABLES = {"USDT", "USDC"}
 
 
+def _live_positions(s: Store, prices: dict) -> list[dict]:
+    """Live-mode open positions from the live_pos tracking (written on each confirmed
+    swap). Paper mode uses paper_positions instead; live mode has no paper book."""
+    out = []
+    rows = s.conn.execute(
+        "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'"
+    ).fetchall()
+    for key, val in rows:
+        sym = key.split(":", 1)[1]
+        try:
+            pos = json.loads(val)
+            amount = float(pos["amount"])
+            entry = float(pos.get("entry_price") or 0.0)
+        except (ValueError, TypeError, KeyError):
+            continue
+        if amount <= 0:
+            continue
+        px = prices.get(sym)
+        value = (px * amount) if px else None
+        gain = (px / entry - 1.0) * 100.0 if (px and entry) else None
+        out.append({
+            "symbol": sym, "amount": amount, "entry_price_usd": entry,
+            "current_price_usd": px, "value_usd": value,
+            "unrealized_pct": gain,
+            "unrealized_usd": (value - entry * amount) if (value is not None) else None,
+            "target_pct": None, "stop_loss_pct": None, "peak_gain_pct": None,
+            "opened_at": None,
+        })
+    return out
+
+
 @app.get("/api/positions")
 def positions() -> list[dict]:
     """Open positions marked to the latest accumulated prices, with unrealized PnL
     and progress toward the take-profit target / stop-loss."""
     s = store()
     prices = s.latest_prices()
+    if config.EXECUTION_MODE == "live":
+        return _live_positions(s, prices)
     out = []
     for p in s.paper_positions():
         sym = p["symbol"]
