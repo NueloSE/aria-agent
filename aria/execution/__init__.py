@@ -150,6 +150,11 @@ async def execute(decision: Decision, portfolio: PortfolioState, store: Store,
 
     if decision.action == "buy":
         amount_usd = portfolio.total_value_usd * decision.size_pct / 100.0
+        # DEX routers reject tiny swaps — floor at $1, cap at 90% of available USDT
+        amount_usd = max(amount_usd, 1.0)
+        amount_usd = min(amount_usd, portfolio.stable_balance_usd * 0.90)
+        if amount_usd < 0.50:
+            return ExecutionResult("skipped", f"insufficient USDT balance for min trade (have ${portfolio.stable_balance_usd:.2f})")
         return await _swap(store, decision.cycle_id, "strategy",
                            "USDT", decision.token_symbol, f"{amount_usd:.2f}")
 
