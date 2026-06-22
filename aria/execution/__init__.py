@@ -21,14 +21,23 @@ from aria.state.db import Store
 log = logging.getLogger("aria.execution")
 
 _client: Optional[TwakClient] = None
+_wallet_bound = False
 
 
 async def get_twak() -> TwakClient:
-    global _client
+    global _client, _wallet_bound
     if _client is None:
         _client = TwakClient()
     if not _client.running:
         await _client.start()
+        _wallet_bound = False  # reset on restart so we re-bind
+    if not _wallet_bound:
+        try:
+            await _client.call("switch_wallet_mode", {"mode": "local"})
+            _wallet_bound = True
+            log.info("TWAK wallet bound to local agent wallet")
+        except TwakError as exc:
+            log.warning("switch_wallet_mode failed: %s — swaps may fail", exc)
     return _client
 
 
