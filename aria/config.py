@@ -81,7 +81,7 @@ CONFIDENCE_FLOOR = 0.6
 MIN_TRADES_PER_DAY = 1
 COMPLIANCE_TRADE_HOUR_UTC = 20      # if no trade by this hour, force minimal swap
 COMPLIANCE_TRADE_SIZE_PCT = 0.5
-MIN_DEPLOYED_USD = 5.0              # sub-$1 portfolio at top of hour scores 0%
+MIN_DEPLOYED_USD = 1.0              # lowered: wallet starts at ~$5, need headroom
 
 # --- Fee-aware min-edge gate (the discipline that prevents cost-bleed) ---
 # A buy's take-profit target must clear the round-trip cost by this multiple,
