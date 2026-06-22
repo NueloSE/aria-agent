@@ -170,7 +170,25 @@ async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
     # 0b. Circuit breaker — mechanical, brain NOT consulted on a breach.
     # Runs BEFORE the trading-window gate so a drawdown breach always triggers the halt
     # even when the competition window is not yet configured (e.g. live mode, pre-start).
+    # DEBOUNCED: a transient reconcile glitch (e.g. a failed on-chain balance query
+    # momentarily valuing the portfolio near-zero) must NOT cause a false halt. Require
+    # the breach to persist DRAWDOWN_BREACH_CONFIRM consecutive cycles; hold (no new
+    # risk) in the meantime, and reset the counter the moment the reading recovers.
     if safety.check_drawdown(portfolio):
+        breaches = int(store.get_state("dd_breach_count") or 0) + 1
+        store.set_state("dd_breach_count", str(breaches))
+        if breaches < config.DRAWDOWN_BREACH_CONFIRM:
+            log.warning("drawdown breach %.2f%% (%d/%d cycles) — HOLDING, confirming "
+                        "before halt (transient-glitch guard)",
+                        portfolio.drawdown_pct, breaches, config.DRAWDOWN_BREACH_CONFIRM)
+            decision = hold_decision(
+                f"drawdown breach unconfirmed ({breaches}/{config.DRAWDOWN_BREACH_CONFIRM}) "
+                f"— holding, no new risk", regime="high_risk")
+            store.log_decision(decision, safety_verdict="breach_unconfirmed")
+            store.snapshot_portfolio(portfolio)
+            await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
+            return signal_failures, bool(portfolio.positions)
+        store.clear_state("dd_breach_count")
         safety.trigger_halt(store, f"drawdown {portfolio.drawdown_pct:.2f}% >= {config.HALT_DRAWDOWN_PCT}%")
         decision = Decision(regime="high_risk", mode="preservation", action="close_all",
                             confidence=1.0,
@@ -181,6 +199,10 @@ async def fast_tick(store: Store, regime: RegimeCache, dry_run: bool,
         store.set_outcome(decision.cycle_id, str(result))
         await maybe_heartbeat(store, portfolio, dry_run, decision.cycle_id)
         return signal_failures, bool(portfolio.positions)
+    else:
+        # Reading is healthy — clear any partial breach count from a prior glitch.
+        if store.get_state("dd_breach_count"):
+            store.clear_state("dd_breach_count")
 
     # 1c. Competition window / operator override.
     allowed, why = window.trading_allowed(store)

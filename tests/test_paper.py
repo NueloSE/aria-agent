@@ -131,5 +131,7 @@ class TestFullPipelinePaper:
         monkeypatch.setattr(main_mod.signals, "fetch_snapshot", fake_fetch)
         from aria import safety
         assert not safety.is_halted(store)
-        await main_mod.run_cycle(store, dry_run=False)
+        # Debounced breaker: the breach must persist DRAWDOWN_BREACH_CONFIRM cycles.
+        for _ in range(config.DRAWDOWN_BREACH_CONFIRM):
+            await main_mod.run_cycle(store, dry_run=False)
         assert safety.is_halted(store)  # breaker fired on paper PnL

@@ -388,6 +388,21 @@ async def reconcile_portfolio(store: Store,
             opened_at=datetime.now(timezone.utc),
         ))
 
+    # Guard against a transient on-chain query failure reading the portfolio as
+    # near-zero. If the stable (USDT) query returned 0 — almost always a network blip,
+    # since the agent always keeps meaningful USDT — fall back to the last known good
+    # stable balance so reconcile never reports a bogus collapse that false-trips the
+    # circuit breaker. A real USDT drain happens via a logged sell, not a silent zero.
+    if stable_usd <= 0:
+        last_good = float(store.get_state("last_good_stable_usd") or 0.0)
+        if last_good > 0:
+            log.warning("reconcile: stable query returned 0 — using last good "
+                        "stable $%.2f (transient-glitch guard)", last_good)
+            stable_usd = last_good
+            total += last_good
+    elif stable_usd > 0:
+        store.set_state("last_good_stable_usd", str(stable_usd))
+
     # High-water mark lives in the DB so drawdown survives restarts
     prev_peak = float(store.get_state("peak_value_usd") or 0.0)
     peak = max(prev_peak, total)

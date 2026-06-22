@@ -73,6 +73,12 @@ CYCLE_INTERVAL_MIN = _env_float("CYCLE_INTERVAL_MIN", 15.0)
 # --- Risk (competition rules: ~30% max drawdown = disqualification gate) ---
 MAX_DRAWDOWN_PCT = _env_float("MAX_DRAWDOWN_PCT", 30.0)
 HALT_DRAWDOWN_PCT = _env_float("HALT_DRAWDOWN_PCT", 20.0)
+# Debounce: a drawdown breach must persist for this many CONSECUTIVE cycles before the
+# breaker halts. Guards against a transient reconcile glitch (e.g. a failed on-chain
+# balance query reading the portfolio as near-zero for one cycle) triggering a false
+# halt. A real drawdown persists; a glitch clears next cycle. At ~30-90s/cycle, the
+# extra cycle can't let a real 20% breach run to the 30% DQ gate.
+DRAWDOWN_BREACH_CONFIRM = int(_env_float("DRAWDOWN_BREACH_CONFIRM", 2))
 MAX_POSITION_PCT = _env_float("MAX_POSITION_PCT", 15.0)
 MAX_CONCURRENT_POSITIONS = int(_env_float("MAX_CONCURRENT_POSITIONS", 4))  # 4 on a ~$50 wallet: diversified vs drawdown-DQ, but few enough to avoid frequency/cost drag
 CONFIDENCE_FLOOR = 0.6

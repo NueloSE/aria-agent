@@ -48,7 +48,11 @@ class TestPnLSlide:
             await run_with_value(store, monkeypatch, value)
             assert not safety.is_halted(store), f"halted too early at {value}"
 
-        # 79 = 21% drawdown -> breach: close_all + latch
+        # 79 = 21% drawdown -> breach. DEBOUNCED: the first breach cycle only HOLDS
+        # (unconfirmed, transient-glitch guard); the breach must persist a 2nd cycle.
+        await run_with_value(store, monkeypatch, 79.0)
+        assert not safety.is_halted(store), "must not halt on a single (unconfirmed) breach"
+        # 2nd consecutive breach confirms -> close_all + latch
         await run_with_value(store, monkeypatch, 79.0)
         assert safety.is_halted(store)
         row = store.conn.execute(
@@ -100,6 +104,21 @@ class TestPnLSlide:
             raise AssertionError("brain must not be consulted during breach")
 
         monkeypatch.setattr(main_mod.brain, "judge_entry", spy_judge)
-        await run_with_value(store, monkeypatch, 70.0)  # 30% dd
+        # 30% dd, fed for the confirm window so the breach latches the halt
+        for _ in range(config.DRAWDOWN_BREACH_CONFIRM):
+            await run_with_value(store, monkeypatch, 70.0)
         assert safety.is_halted(store)
         assert not called
+
+    async def test_single_glitch_cycle_does_not_halt(self, store, monkeypatch):
+        """A one-cycle valuation glitch (e.g. a failed on-chain balance query reading
+        the portfolio near-zero) must NOT halt — it holds, then recovers cleanly."""
+        # one healthy cycle establishes the peak
+        await run_with_value(store, monkeypatch, 100.0)
+        # a single deep-breach cycle (a glitch) — must hold, NOT halt
+        await run_with_value(store, monkeypatch, 10.0)   # 90% dd, like the false halt
+        assert not safety.is_halted(store), "a single glitch cycle must not halt"
+        # reading recovers next cycle -> breach counter resets, trading continues
+        await run_with_value(store, monkeypatch, 100.0)
+        assert not safety.is_halted(store)
+        assert store.get_state("dd_breach_count") in (None, "0")
