@@ -96,6 +96,10 @@ REENTRY_COOLDOWN_MIN = _env_float("REENTRY_COOLDOWN_MIN", 120.0)
 # — stops paying for the same reject every tick, and lets the gate fall through to the
 # next-best candidate. Short (15 min) so a setup that genuinely turns isn't missed.
 REJECT_COOLDOWN_MIN = _env_float("REJECT_COOLDOWN_MIN", 15.0)
+# After a token fails the pre-flight routability check (no BSC swap route / thin
+# liquidity, e.g. BCH/ADA), cool it down for a long stretch — liquidity won't appear
+# within minutes, so re-checking soon just wastes quote calls. 6h.
+ROUTE_FAIL_COOLDOWN_MIN = _env_float("ROUTE_FAIL_COOLDOWN_MIN", 360.0)
 
 # --- Exit management: stepped trailing stop + take-profit (lock winners, cut losers) ---
 TRAIL_TRIGGER_PCT = _env_float("TRAIL_TRIGGER_PCT", 1.5)   # arm trailing once gain >= this (lowered 2.5->1.5: cheap costs let us lock smaller wins)

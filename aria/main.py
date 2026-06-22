@@ -286,7 +286,24 @@ async def _hunt_entry(store: Store, regime: RegimeCache, portfolio: PortfolioSta
         except Exception as exc:  # noqa: BLE001 — never let confirmation block the loop
             log.warning("TA confirmation failed (proceeding without): %s", exc)
 
-    # EVENT-DRIVEN LLM CALL — only now that a real, non-cooled candidate exists.
+    # PRE-FLIGHT ROUTABILITY — before paying for an LLM judgment, confirm the candidate
+    # can actually be swapped on BSC at roughly the intended size. Tokens with thin
+    # liquidity (BCH/ADA/BTT) fail here cheaply (a quote, not an LLM call) and get a long
+    # cooldown, so we never burn the judge on a trade that would only fail at swap time.
+    approx_usd = portfolio.total_value_usd * min(
+        candidate.size_pct * posture.size_multiplier, config.MAX_POSITION_PCT) / 100.0
+    approx_usd = min(approx_usd, portfolio.stable_balance_usd * 0.90)
+    routable, route_reason = await execution.preflight_route("USDT", candidate.token_symbol, approx_usd)
+    if not routable:
+        until = (datetime.now(timezone.utc)
+                 + timedelta(minutes=config.ROUTE_FAIL_COOLDOWN_MIN)).isoformat()
+        store.set_cooldown(candidate.token_symbol, until)
+        log.info("pre-flight: %s not routable (%s) — skipped, no LLM call, cooled %dm",
+                 candidate.token_symbol, route_reason, int(config.ROUTE_FAIL_COOLDOWN_MIN))
+        return hold_decision(f"{candidate.token_symbol} not routable on BSC: {route_reason}",
+                             regime="ranging")
+
+    # EVENT-DRIVEN LLM CALL — only now that a real, non-cooled, ROUTABLE candidate exists.
     judgment = await brain.judge_entry(candidate, snap, portfolio, posture)
     if judgment.approve and judgment.confidence >= config.CONFIDENCE_FLOOR:
         return _entry_decision(candidate, mode or "mean_reversion", judgment, posture)

@@ -167,6 +167,24 @@ async def _swap(store: Store, cycle_id: str, kind: str,
     return ExecutionResult("executed", summary or f"{in_str} -> {out_str}")
 
 
+async def preflight_route(from_token: str, to_token: str, amount_usd: float) -> "tuple[bool, str]":
+    """Cheap routability check BEFORE the LLM judge: can this swap be quoted and does
+    it pass the price-impact gate? Lets the loop skip un-routable tokens (e.g. BCH/ADA
+    with thin BSC liquidity) WITHOUT paying for an LLM judgment that would only fail at
+    swap time. A quote is ~free vs an LLM call. No-op (always OK) outside live mode."""
+    if not _live():
+        return True, ""
+    twak = await get_twak()
+    base = {"fromChain": config.CHAIN, "toChain": config.CHAIN,
+            "fromToken": from_token, "toToken": to_token, "amount": f"{amount_usd:.2f}"}
+    try:
+        quote = await twak.call("get_swap_quote", base)
+    except TwakError as exc:
+        return False, f"no route: {str(exc)[:120]}"
+    reason = check_quote(quote if isinstance(quote, dict) else {})
+    return (reason is None), (reason or "")
+
+
 # --- Decision execution ---------------------------------------------------------
 
 async def execute(decision: Decision, portfolio: PortfolioState, store: Store,
