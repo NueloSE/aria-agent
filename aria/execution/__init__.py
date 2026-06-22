@@ -365,16 +365,26 @@ async def reconcile_portfolio(store: Store,
         try:
             pos = _json.loads(val)
             amount = float(pos["amount"])
+            entry = float(pos.get("entry_price") or 0.0)
         except (Exception,):  # noqa: BLE001
             continue
         if amount <= 0:
             continue
         price = prices.get(sym)
+        # Self-heal corrupt records: positions bought during the old symbol-routing
+        # bug recorded a BNB-denominated entry price (~$590), producing a fake -99%
+        # loss that would wrongly trigger a stop-loss. If the recorded entry is wildly
+        # off the live price (>20x either way), the record is corrupt — drop it.
+        if price and entry and (entry > 20 * price or price > 20 * entry):
+            store.clear_state(key)
+            log.warning("reconcile: dropped corrupt live_pos %s (entry $%.4f vs price $%.4f)",
+                        sym, entry, price)
+            continue
         if price is None:
-            price = float(pos.get("entry_price") or 0.0)  # fall back to entry if unpriced
+            price = entry  # fall back to entry if unpriced
         total += amount * price
         positions.append(Position(
-            token_symbol=sym, amount=amount, entry_price_usd=price,
+            token_symbol=sym, amount=amount, entry_price_usd=entry or price,
             opened_at=datetime.now(timezone.utc),
         ))
 
