@@ -13,16 +13,20 @@ cd "$(dirname "$0")/.."
 # The Railway container is ephemeral — ~/.twak/ is wiped on every redeploy.
 # Store the contents of ~/.twak/credentials.json and ~/.twak/wallet.json
 # as TWAK_CREDENTIALS_JSON and TWAK_WALLET_JSON in Railway Variables.
+echo "[railway-start] HOME=$HOME  twak dir=$(ls ~/.twak/ 2>/dev/null | tr '\n' ' ' || echo 'missing')"
 if [ -n "${TWAK_CREDENTIALS_JSON:-}" ]; then
   mkdir -p ~/.twak
-  printf '%s' "$TWAK_CREDENTIALS_JSON" > ~/.twak/credentials.json
-  echo "[railway-start] twak credentials restored"
+  echo "$TWAK_CREDENTIALS_JSON" > ~/.twak/credentials.json
+  echo "[railway-start] twak credentials restored ($(wc -c < ~/.twak/credentials.json) bytes)"
 fi
 if [ -n "${TWAK_WALLET_JSON:-}" ]; then
   mkdir -p ~/.twak
-  printf '%s' "$TWAK_WALLET_JSON" > ~/.twak/wallet.json
-  echo "[railway-start] twak wallet restored"
+  echo "$TWAK_WALLET_JSON" > ~/.twak/wallet.json
+  echo "[railway-start] twak wallet restored ($(wc -c < ~/.twak/wallet.json) bytes)"
+  # Verify the file is valid JSON with expected keys
+  python3 -c "import json; d=json.load(open('$HOME/.twak/wallet.json')); print('[railway-start] wallet keys:', list(d.keys()))" 2>&1 || echo "[railway-start] WARNING: wallet.json is not valid JSON"
 fi
+echo "[railway-start] final twak dir: $(ls -la ~/.twak/ 2>/dev/null || echo 'empty')"
 
 PORT="${PORT:-8000}"
 PY="${PYTHON:-python}"   # Railway's nixpython provides `python`; override locally

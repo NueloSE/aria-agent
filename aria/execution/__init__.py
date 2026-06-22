@@ -33,11 +33,16 @@ async def get_twak() -> TwakClient:
         _wallet_bound = False  # reset on restart so we re-bind
     if not _wallet_bound:
         try:
-            await _client.call("switch_wallet_mode", {"mode": "local"})
-            _wallet_bound = True
-            log.info("TWAK wallet bound to local agent wallet")
+            status = await _client.call("get_wallet_status")
+            log.info("TWAK wallet status: %s", status)
+            mode = status.get("mode") or status.get("walletMode") or str(status) if isinstance(status, dict) else str(status)
+            if "not_bound" in str(status).lower() or "unbound" in str(status).lower():
+                log.warning("TWAK wallet not bound — swaps will fail. Check wallet.json on Railway.")
+            else:
+                _wallet_bound = True
+                log.info("TWAK wallet ready: %s", mode)
         except TwakError as exc:
-            log.warning("switch_wallet_mode failed: %s — swaps may fail", exc)
+            log.warning("get_wallet_status failed: %s", exc)
     return _client
 
 
