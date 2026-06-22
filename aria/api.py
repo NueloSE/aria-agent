@@ -313,6 +313,23 @@ def clear_halt() -> dict:
     return {"halted": False, "message": "halt cleared — agent resumes next cycle"}
 
 
+@app.post("/api/reset-peak")
+def reset_peak() -> dict:
+    """Reset peak_value_usd to current portfolio value so drawdown starts at 0%.
+    Use after a halt caused by temporary losses you want to recover from."""
+    _guard_readonly()
+    s = store()
+    snap = _rows(s.conn,
+                 "SELECT total_value_usd FROM portfolio_snapshots ORDER BY id DESC LIMIT 1")
+    if not snap:
+        raise HTTPException(400, "no portfolio snapshot yet — agent hasn't run")
+    current = snap[0]["total_value_usd"]
+    s.set_state("peak_value_usd", str(current))
+    safety.clear_halt(s)
+    return {"peak_reset_to": current, "drawdown_pct": 0.0,
+            "message": f"Peak reset to ${current:.2f}. Halt cleared. Agent resumes next cycle."}
+
+
 # --- Serve the built dashboard from this same server (single URL, single process) ----
 # `cd dashboard && npm run build` writes dashboard/dist; then this server hosts both the
 # API and the UI on one port. Open http://localhost:8000/ — no separate dev server needed.
