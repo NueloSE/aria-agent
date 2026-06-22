@@ -220,3 +220,13 @@ BLUE_CHIPS = (
     "PLUME", "ASTER", "LUNC", "BTT", "SFP", "FLOKI", "BONK", "PENGU", "WLFI", "IP",
 )
 STABLES = ("USDT", "USDC")
+
+# Verified BSC-swappable allowlist — ONLY these tokens have a confirmed Binance-Peg
+# contract + PancakeSwap liquidity (mirrors _BSC_CONTRACTS in aria/execution). The
+# entry gate is constrained to this set so it never proposes a token that fails at
+# swap time (e.g. RAY is Solana-native, ZEC/ZRO have no reliable BSC route). Keep in
+# sync with aria/execution/__init__.py:_BSC_CONTRACTS.
+TRADEABLE_SYMBOLS: frozenset[str] = frozenset({
+    "ETH", "LTC", "XRP", "ADA", "DOGE", "DOT", "LINK", "ATOM",
+    "UNI", "ETC", "BCH", "SHIB", "CAKE", "AVAX", "AAVE", "BTT",
+})

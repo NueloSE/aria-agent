@@ -258,6 +258,9 @@ async def _hunt_entry(store: Store, regime: RegimeCache, portfolio: PortfolioSta
     # Exclude tokens in cooldown (just-exited OR just judge-rejected) so the gate
     # falls through to the best NON-cooled candidate instead of re-judging the same one.
     skip = store.cooled_down_tokens()
+    # Also exclude any token that isn't verified BSC-swappable, so the gate never
+    # proposes a coin that will fail at swap time (RAY=Solana, ZEC/ZRO no BSC route).
+    skip |= {s for s in config.BLUE_CHIPS if s not in config.TRADEABLE_SYMBOLS}
     candidate, mode = await strategies.scan_entries(
         snap, portfolio, allow_narrative=(refreshed and posture.allow_narrative), skip=skip)
     if candidate.action != "buy" or not candidate.token_symbol:
