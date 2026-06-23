@@ -298,22 +298,40 @@ _BSC_CONTRACTS: dict[str, str] = {
 }
 
 
-async def _query_known_balances(twak: "TwakClient") -> list[dict]:
-    """Fallback: query each known token contract directly via get_balance."""
-    items = []
-    for sym, addr in _BSC_CONTRACTS.items():
-        try:
-            r = await twak.call("get_balance", {
-                "address": config.AGENT_WALLET, "chain": config.CHAIN,
-                "tokenAddress": addr,
-            })
-            raw = r.get("amounts", {}).get("total", "0") if isinstance(r, dict) else "0"
-            amount = float(raw) / 1e18
-            if amount > 0:
-                items.append({"symbol": sym, "balance": amount})
-        except Exception as exc:  # noqa: BLE001
-            log.warning("get_balance fallback failed for %s: %s", sym, exc)
-    return items
+async def _onchain_holdings_usd(twak: "TwakClient", store: Store) -> dict:
+    """symbol -> USD value of the wallet's on-chain holding, read straight from
+    get_balance's `amounts.totalInFiat` (TWAK returns the fiat value directly, so NO
+    decimals math — Binance-Peg DOGE is 8 decimals, most others 18, but totalInFiat
+    sidesteps all of it). Queries the whole tradeable set concurrently (bounded) so the
+    cycle stays fast. Each value is cached per token; on a transient query error we fall
+    back to the last cached value so one network blip never collapses the portfolio
+    total (which previously caused a false drawdown halt)."""
+    import asyncio as _asyncio
+
+    sem = _asyncio.Semaphore(6)  # don't overwhelm the stdio pipe with 16 at once
+
+    async def one(sym: str, addr: str) -> "tuple[str, float]":
+        async with sem:
+            try:
+                r = await twak.call("get_balance", {
+                    "address": config.AGENT_WALLET, "chain": config.CHAIN,
+                    "tokenAddress": addr,
+                })
+                fiat = r.get("amounts", {}).get("totalInFiat") if isinstance(r, dict) else None
+                usd = float(fiat) if fiat not in (None, "") else 0.0
+                store.set_state(f"onchain_usd:{sym}", str(usd))
+                return sym, usd
+            except Exception as exc:  # noqa: BLE001
+                cached = store.get_state(f"onchain_usd:{sym}")
+                if cached is not None:
+                    log.warning("get_balance %s failed (%s) — using cached $%s",
+                                sym, str(exc)[:50], cached)
+                    return sym, float(cached)
+                log.warning("get_balance %s failed (%s), no cache — $0", sym, str(exc)[:50])
+                return sym, 0.0
+
+    results = await _asyncio.gather(*[one(s, a) for s, a in _BSC_CONTRACTS.items()])
+    return {s: v for s, v in results}
 
 
 # --- Portfolio reconciliation (startup + every cycle in live mode) ----------------
@@ -328,52 +346,26 @@ async def reconcile_portfolio(store: Store,
     from aria.models import Position
 
     twak = await get_twak()
-    holdings = await twak.call(
-        "get_token_holdings", {"address": config.AGENT_WALLET, "chain": config.CHAIN}
-    )
-    items = holdings if isinstance(holdings, list) else holdings.get("tokens", []) \
-        if isinstance(holdings, dict) else []
-
-    # get_token_holdings returns {tokens:[]} on this wallet. The reliable approach:
-    #  - STABLES (USDT): query on-chain (18 decimals, dependable).
-    #  - NON-STABLE positions: read from DB-tracked live_pos records, written with the
-    #    EXACT token amount parsed from each confirmed swap summary. This avoids the
-    #    per-token decimals problem (e.g. Binance-Peg DOGE uses 8 decimals, not 18) that
-    #    made confirmed buys invisible when divided by a hardcoded 1e18.
-    if not items:
-        items = await _query_known_balances(twak)
-
     prices = prices or {}
-    stable_usd = 0.0
-    positions: list[Position] = []
-    total = 0.0
-    seen_syms: set[str] = set()
 
-    # Stables only from the on-chain query (USDT decimals are 18 — safe).
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        sym = str(item.get("symbol", "")).upper()
-        if sym not in config.STABLES:
-            continue  # non-stable balances come from live_pos (decimals-safe)
-        try:
-            amount = float(item.get("balance") or item.get("amount") or 0)
-        except (TypeError, ValueError):
-            continue
-        if amount <= 0:
-            continue
-        stable_usd += amount
-        total += amount
-        seen_syms.add(sym)
+    # PORTFOLIO VALUE — authoritative, straight from on-chain holdings (totalInFiat).
+    # This is the actual wallet value, so drawdown can't be faked by stale local state.
+    holdings_usd = await _onchain_holdings_usd(twak, store)
+    stable_usd = sum(v for s, v in holdings_usd.items() if s in config.STABLES)
+    token_usd = sum(v for s, v in holdings_usd.items() if s not in config.STABLES)
+    total = stable_usd + token_usd
 
-    # Non-stable positions from the DB tracking (exact amounts, no decimals guessing).
+    # POSITIONS LIST — for exit management only (entry price, stop/target, hold time).
+    # These come from the live_pos tracking; the portfolio TOTAL above already values
+    # every holding from chain, so positions are NOT re-added to the total here.
     import json as _json
+    positions: list[Position] = []
     rows = store.conn.execute(
         "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'"
     ).fetchall()
     for key, val in rows:
         sym = key.split(":", 1)[1].upper()
-        if sym in config.STABLES or sym in seen_syms:
+        if sym in config.STABLES:
             continue
         try:
             pos = _json.loads(val)
@@ -395,7 +387,8 @@ async def reconcile_portfolio(store: Store,
             continue
         if price is None:
             price = entry  # fall back to entry if unpriced
-        total += amount * price
+        # NOTE: not added to `total` — the on-chain holdings_usd above already values
+        # this holding. positions[] is only the management list for the exit manager.
         # Carry the stored stop/target so the exit manager can act on the position.
         # Fall back to the mean-reversion defaults for legacy records that predate
         # stop/target persistence (so old positions still get downside protection).
@@ -413,16 +406,15 @@ async def reconcile_portfolio(store: Store,
             target_pct=tp if tp is not None else config.MR_TARGET_PCT,
         ))
 
-    # Guard against a transient on-chain query failure reading the portfolio as
-    # near-zero. If the stable (USDT) query returned 0 — almost always a network blip,
-    # since the agent always keeps meaningful USDT — fall back to the last known good
-    # stable balance so reconcile never reports a bogus collapse that false-trips the
-    # circuit breaker. A real USDT drain happens via a logged sell, not a silent zero.
+    # Guard against a transient query failure reading the portfolio as near-zero. If the
+    # USDT value came back 0 (a blip — the agent always holds meaningful USDT), fall back
+    # to the last known good so reconcile never reports a bogus collapse that false-trips
+    # the circuit breaker. (Per-token caching in _onchain_holdings_usd already covers most
+    # of this; this is the belt-and-suspenders on the stable leg specifically.)
     if stable_usd <= 0:
         last_good = float(store.get_state("last_good_stable_usd") or 0.0)
         if last_good > 0:
-            log.warning("reconcile: stable query returned 0 — using last good "
-                        "stable $%.2f (transient-glitch guard)", last_good)
+            log.warning("reconcile: stable read 0 — using last good stable $%.2f", last_good)
             stable_usd = last_good
             total += last_good
     elif stable_usd > 0:
