@@ -143,6 +143,19 @@ async def _swap(store: Store, cycle_id: str, kind: str,
     in_str = parts[0] if len(parts) == 2 else str(detail.get("input", amount))
     out_str = parts[1] if len(parts) == 2 else str(detail.get("output", ""))
     tx_hash = str(detail.get("txHash") or detail.get("hash") or "")
+
+    # A real on-chain swap returns a tx hash (and an output amount). SELLs were observed
+    # returning an EMPTY result (no tx, no output) that was wrongly treated as success —
+    # the position got cleared, the slot freed, and the agent re-bought, churning while
+    # the token stayed on-chain and USDT drained. Treat a no-tx, no-output result as a
+    # FAILED swap: do NOT clear/record the position. Log the raw result for diagnosis.
+    if not tx_hash and not out_str:
+        log.warning("SWAP %s -> %s returned NO tx and NO output — treating as FAILED. "
+                    "raw result: %s", from_token, to_token, str(detail)[:400])
+        store.log_trade(cycle_id, kind, from_token, to_token, status="failed",
+                        from_amount=in_str)
+        return ExecutionResult("failed", f"swap returned empty (no tx/output): {str(detail)[:150]}")
+
     store.log_trade(
         cycle_id, kind, from_token, to_token, status="confirmed",
         from_amount=in_str,
