@@ -93,8 +93,12 @@ def _token_ref(symbol: str) -> str:
 
 
 async def _swap(store: Store, cycle_id: str, kind: str,
-                from_token: str, to_token: str, amount: str) -> ExecutionResult:
-    """quote -> impact gate -> swap -> log. The only function that moves money."""
+                from_token: str, to_token: str, amount: str,
+                stop_loss_pct: Optional[float] = None,
+                target_pct: Optional[float] = None) -> ExecutionResult:
+    """quote -> impact gate -> swap -> log. The only function that moves money.
+    stop_loss_pct/target_pct (buys only) are persisted with the live_pos record so the
+    exit manager can stop-out / take-profit a position rebuilt from on-chain state."""
     twak = await get_twak()
     base = {"fromChain": config.CHAIN, "toChain": config.CHAIN,
             "fromToken": _token_ref(from_token), "toToken": _token_ref(to_token),
@@ -153,20 +157,24 @@ async def _swap(store: Store, cycle_id: str, kind: str,
         if to_token not in config.STABLES and from_token in config.STABLES:
             # Confirmed buy: record position
             try:
+                import json as _json
                 out_amount, _ = parse_amount(out_str)
                 in_amount, _ = parse_amount(in_str)
                 entry_price = (in_amount / out_amount) if out_amount > 0 else 0.0
                 existing = store.get_state(f"live_pos:{to_token}")
                 if existing:
-                    import json as _json
                     prev = _json.loads(existing)
                     total_amt = prev["amount"] + out_amount
                     avg_price = ((prev["amount"] * prev["entry_price"]) + (out_amount * entry_price)) / total_amt if total_amt else entry_price
-                    store.set_state(f"live_pos:{to_token}", _json.dumps({"amount": total_amt, "entry_price": avg_price}))
+                    rec = {"amount": total_amt, "entry_price": avg_price,
+                           "stop_loss_pct": stop_loss_pct if stop_loss_pct is not None else prev.get("stop_loss_pct"),
+                           "target_pct": target_pct if target_pct is not None else prev.get("target_pct")}
                 else:
-                    import json as _json
-                    store.set_state(f"live_pos:{to_token}", _json.dumps({"amount": out_amount, "entry_price": entry_price}))
-                log.info("live_pos recorded: %s amount=%.6f entry=%.4f", to_token, out_amount, entry_price)
+                    rec = {"amount": out_amount, "entry_price": entry_price,
+                           "stop_loss_pct": stop_loss_pct, "target_pct": target_pct}
+                store.set_state(f"live_pos:{to_token}", _json.dumps(rec))
+                log.info("live_pos recorded: %s amount=%.6f entry=%.4f stop=%s target=%s",
+                         to_token, out_amount, entry_price, stop_loss_pct, target_pct)
             except Exception as exc:
                 log.warning("failed to record live_pos for %s: %s", to_token, exc)
         elif from_token not in config.STABLES and to_token in config.STABLES:
@@ -217,7 +225,9 @@ async def execute(decision: Decision, portfolio: PortfolioState, store: Store,
         if amount_usd < 0.10:
             return ExecutionResult("skipped", f"insufficient USDT balance for min trade (have ${portfolio.stable_balance_usd:.2f})")
         return await _swap(store, decision.cycle_id, "strategy",
-                           "USDT", decision.token_symbol, f"{amount_usd:.2f}")
+                           "USDT", decision.token_symbol, f"{amount_usd:.2f}",
+                           stop_loss_pct=decision.stop_loss_pct,
+                           target_pct=decision.target_pct)
 
     if decision.action == "sell":
         pos = next((p for p in portfolio.positions
@@ -383,9 +393,16 @@ async def reconcile_portfolio(store: Store,
         if price is None:
             price = entry  # fall back to entry if unpriced
         total += amount * price
+        # Carry the stored stop/target so the exit manager can act on the position.
+        # Fall back to the mean-reversion defaults for legacy records that predate
+        # stop/target persistence (so old positions still get downside protection).
+        sl = pos.get("stop_loss_pct")
+        tp = pos.get("target_pct")
         positions.append(Position(
             token_symbol=sym, amount=amount, entry_price_usd=entry or price,
             opened_at=datetime.now(timezone.utc),
+            stop_loss_pct=sl if sl is not None else config.MR_STOP_LOSS_PCT,
+            target_pct=tp if tp is not None else config.MR_TARGET_PCT,
         ))
 
     # Guard against a transient on-chain query failure reading the portfolio as
