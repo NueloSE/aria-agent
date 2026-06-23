@@ -141,6 +141,11 @@ MR_MAX_1Y_DECLINE_PCT = _env_float("MR_MAX_1Y_DECLINE_PCT", -85.0)    # skip str
 MR_MAX_90D_DECLINE_PCT = _env_float("MR_MAX_90D_DECLINE_PCT", -70.0)  # fallback guard when 1y is absent (newer tokens)
 MR_STOP_LOSS_PCT = 5.0
 MR_TARGET_PCT = _env_float("MR_TARGET_PCT", 4.0)  # default snap-to-mean target (lowered 7->4: real cost ~0.15%, exit the bounce sooner)
+# Time-stop: a mean-reversion bet should resolve (bounce or stop) within hours. If a
+# position sits in the dead zone (between -stop and +target) past this many hours, the
+# thesis has failed — close it to free the slot for a fresh setup. Prevents the 4
+# concurrent slots from freezing on stale trades that never hit target or stop.
+MAX_HOLD_HOURS = _env_float("MAX_HOLD_HOURS", 18.0)
 MR_SIZE_PCT = 10.0
 # Per-candidate TECHNICAL confirmation (get_crypto_technical_analysis, 1 credit on the
 # single top candidate only). Real RSI confirms genuine oversold (not just "down"), and

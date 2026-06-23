@@ -18,8 +18,8 @@ log = logging.getLogger("aria.execution.manager")
 
 
 def _exit_reason(gain: float, peak: float, target: "float | None",
-                 stop_loss: "float | None") -> "str | None":
-    """Pure decision: which exit (if any) fires. Order: take-profit, trail, stop."""
+                 stop_loss: "float | None", held_hours: "float | None" = None) -> "str | None":
+    """Pure decision: which exit (if any) fires. Order: take-profit, trail, stop, time."""
     if target is not None and gain >= target:
         return "take_profit"
     trail = safety.trailing_stop_for(peak)
@@ -27,6 +27,10 @@ def _exit_reason(gain: float, peak: float, target: "float | None",
         return "trailing_stop"
     if stop_loss is not None and gain <= -stop_loss:
         return "stop_loss"
+    # Time-stop: a stale position stuck in the dead zone frees its slot for a fresh
+    # setup. Only fires once past MAX_HOLD_HOURS (the bounce thesis has clearly failed).
+    if held_hours is not None and held_hours >= config.MAX_HOLD_HOURS:
+        return "time_stop"
     return None
 
 
@@ -45,7 +49,11 @@ async def manage_open_positions(portfolio: PortfolioState, prices: dict[str, flo
         if peak > pos.peak_gain_pct and config.EXECUTION_MODE == "paper":
             store.paper_position_peak(pos.token_symbol, peak)
 
-        reason = _exit_reason(gain, peak, pos.target_pct, pos.stop_loss_pct)
+        held_hours = None
+        if pos.opened_at is not None:
+            from datetime import datetime, timezone
+            held_hours = (datetime.now(timezone.utc) - pos.opened_at).total_seconds() / 3600.0
+        reason = _exit_reason(gain, peak, pos.target_pct, pos.stop_loss_pct, held_hours)
         if reason is None:
             continue
 

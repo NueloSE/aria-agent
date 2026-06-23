@@ -162,16 +162,19 @@ async def _swap(store: Store, cycle_id: str, kind: str,
                 in_amount, _ = parse_amount(in_str)
                 entry_price = (in_amount / out_amount) if out_amount > 0 else 0.0
                 existing = store.get_state(f"live_pos:{to_token}")
+                now_iso = datetime.now(timezone.utc).isoformat()
                 if existing:
                     prev = _json.loads(existing)
                     total_amt = prev["amount"] + out_amount
                     avg_price = ((prev["amount"] * prev["entry_price"]) + (out_amount * entry_price)) / total_amt if total_amt else entry_price
                     rec = {"amount": total_amt, "entry_price": avg_price,
                            "stop_loss_pct": stop_loss_pct if stop_loss_pct is not None else prev.get("stop_loss_pct"),
-                           "target_pct": target_pct if target_pct is not None else prev.get("target_pct")}
+                           "target_pct": target_pct if target_pct is not None else prev.get("target_pct"),
+                           "opened_at": prev.get("opened_at") or now_iso}  # keep original open time
                 else:
                     rec = {"amount": out_amount, "entry_price": entry_price,
-                           "stop_loss_pct": stop_loss_pct, "target_pct": target_pct}
+                           "stop_loss_pct": stop_loss_pct, "target_pct": target_pct,
+                           "opened_at": now_iso}
                 store.set_state(f"live_pos:{to_token}", _json.dumps(rec))
                 log.info("live_pos recorded: %s amount=%.6f entry=%.4f stop=%s target=%s",
                          to_token, out_amount, entry_price, stop_loss_pct, target_pct)
@@ -398,9 +401,14 @@ async def reconcile_portfolio(store: Store,
         # stop/target persistence (so old positions still get downside protection).
         sl = pos.get("stop_loss_pct")
         tp = pos.get("target_pct")
+        opened = pos.get("opened_at")
+        try:
+            opened_at = datetime.fromisoformat(opened) if opened else datetime.now(timezone.utc)
+        except (ValueError, TypeError):
+            opened_at = datetime.now(timezone.utc)
         positions.append(Position(
             token_symbol=sym, amount=amount, entry_price_usd=entry or price,
-            opened_at=datetime.now(timezone.utc),
+            opened_at=opened_at,
             stop_loss_pct=sl if sl is not None else config.MR_STOP_LOSS_PCT,
             target_pct=tp if tp is not None else config.MR_TARGET_PCT,
         ))
