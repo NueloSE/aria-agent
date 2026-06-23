@@ -110,8 +110,9 @@ def _live_positions(s: Store, prices: dict) -> list[dict]:
             "current_price_usd": px, "value_usd": value,
             "unrealized_pct": gain,
             "unrealized_usd": (value - entry * amount) if (value is not None) else None,
-            "target_pct": None, "stop_loss_pct": None, "peak_gain_pct": None,
-            "opened_at": None,
+            "target_pct": pos.get("target_pct"), "stop_loss_pct": pos.get("stop_loss_pct"),
+            "peak_gain_pct": None,
+            "opened_at": pos.get("opened_at"),  # real ISO open time (was None -> 1970/"20627d ago")
         })
     return out
 
