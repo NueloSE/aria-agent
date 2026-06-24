@@ -85,6 +85,10 @@ HALT_DRAWDOWN_PCT = _env_float("HALT_DRAWDOWN_PCT", 20.0)
 DRAWDOWN_BREACH_CONFIRM = int(_env_float("DRAWDOWN_BREACH_CONFIRM", 2))
 MAX_POSITION_PCT = _env_float("MAX_POSITION_PCT", 15.0)
 MAX_CONCURRENT_POSITIONS = int(_env_float("MAX_CONCURRENT_POSITIONS", 4))  # 4 on a ~$50 wallet: diversified vs drawdown-DQ, but few enough to avoid frequency/cost drag
+# On-chain holdings worth less than this are treated as dust — not surfaced as a
+# managed position (avoids the near-zero leftovers from old trades cluttering the book
+# and counting against the concurrent-position cap).
+POSITION_MIN_USD = _env_float("POSITION_MIN_USD", 0.25)
 CONFIDENCE_FLOOR = 0.6
 
 # --- Rule compliance (mandatory; enforced by safety/scheduler, never the LLM) ---

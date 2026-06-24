@@ -381,50 +381,59 @@ async def reconcile_portfolio(store: Store,
     token_usd = sum(v for s, v in holdings_usd.items() if s not in config.STABLES)
     total = stable_usd + token_usd
 
-    # POSITIONS LIST — for exit management only (entry price, stop/target, hold time).
-    # These come from the live_pos tracking; the portfolio TOTAL above already values
-    # every holding from chain, so positions are NOT re-added to the total here.
+    # POSITIONS LIST — built from ACTUAL on-chain holdings so it MATCHES the wallet
+    # (the old approach listed only live_pos, which drifted when sells failed silently,
+    # making the dashboard show fewer positions than really held and letting the agent
+    # over-buy past its concurrent cap). Each holding is enriched with its live_pos
+    # metadata (entry/stop/target/opened_at) when tracked; holdings NOT in live_pos
+    # ("orphans" from earlier failed sells) are ADOPTED — we write a live_pos for them
+    # (entry=current price, default stops, opened_at=now) so the exit manager can manage
+    # and eventually consolidate them. amount is derived decimals-free as usd / price.
     import json as _json
-    positions: list[Position] = []
-    rows = store.conn.execute(
-        "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'"
-    ).fetchall()
-    for key, val in rows:
-        sym = key.split(":", 1)[1].upper()
-        if sym in config.STABLES:
-            continue
+    live: dict[str, dict] = {}
+    for key, val in store.conn.execute(
+            "SELECT key, value FROM agent_state WHERE key LIKE 'live_pos:%'").fetchall():
         try:
-            pos = _json.loads(val)
-            amount = float(pos["amount"])
-            entry = float(pos.get("entry_price") or 0.0)
-        except (Exception,):  # noqa: BLE001
-            continue
-        if amount <= 0:
+            live[key.split(":", 1)[1].upper()] = _json.loads(val)
+        except Exception:  # noqa: BLE001
+            pass
+
+    positions: list[Position] = []
+    for sym, usd in holdings_usd.items():
+        if sym in config.STABLES or usd < config.POSITION_MIN_USD:
             continue
         price = prices.get(sym)
-        # Self-heal corrupt records: positions bought during the old symbol-routing
-        # bug recorded a BNB-denominated entry price (~$590), producing a fake -99%
-        # loss that would wrongly trigger a stop-loss. If the recorded entry is wildly
-        # off the live price (>20x either way), the record is corrupt — drop it.
+        lp = live.get(sym)
+        entry = float(lp["entry_price"]) if (lp and lp.get("entry_price")) else None
+        # Self-heal a corrupt recorded entry (BNB-priced ~$590 from the old symbol bug).
         if price and entry and (entry > 20 * price or price > 20 * entry):
-            store.clear_state(key)
-            log.warning("reconcile: dropped corrupt live_pos %s (entry $%.4f vs price $%.4f)",
-                        sym, entry, price)
-            continue
+            store.clear_state(f"live_pos:{sym}")
+            lp, entry = None, None
         if price is None:
-            price = entry  # fall back to entry if unpriced
-        # NOTE: not added to `total` — the on-chain holdings_usd above already values
-        # this holding. positions[] is only the management list for the exit manager.
-        # Carry the stored stop/target so the exit manager can act on the position.
-        # Fall back to the mean-reversion defaults for legacy records that predate
-        # stop/target persistence (so old positions still get downside protection).
-        sl = pos.get("stop_loss_pct")
-        tp = pos.get("target_pct")
-        opened = pos.get("opened_at")
+            price = entry  # unpriced: fall back to recorded entry
+        if not price or price <= 0:
+            continue
+        # Decimals-free amount: on-chain USD value / unit price. 0.999 margin so a later
+        # full-exit sell can't exceed the actual balance (avoids insufficient-funds).
+        amount = (usd / price) * 0.999
+        if lp is None:
+            # Adopt the orphan: persist a live_pos so it's tracked AND gets a real
+            # opened_at — otherwise the time-stop never fires and it's stuck forever.
+            now_iso = datetime.now(timezone.utc).isoformat()
+            store.set_state(f"live_pos:{sym}", _json.dumps({
+                "amount": amount, "entry_price": price,
+                "stop_loss_pct": config.MR_STOP_LOSS_PCT,
+                "target_pct": config.MR_TARGET_PCT, "opened_at": now_iso}))
+            log.info("reconcile: adopted orphan holding %s ($%.2f) into tracking", sym, usd)
+            lp = {"opened_at": now_iso}
+            entry = price
+        opened = lp.get("opened_at")
         try:
             opened_at = datetime.fromisoformat(opened) if opened else datetime.now(timezone.utc)
         except (ValueError, TypeError):
             opened_at = datetime.now(timezone.utc)
+        sl = lp.get("stop_loss_pct")
+        tp = lp.get("target_pct")
         positions.append(Position(
             token_symbol=sym, amount=amount, entry_price_usd=entry or price,
             opened_at=opened_at,
