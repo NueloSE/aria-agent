@@ -38,6 +38,10 @@ CHAIN = "bsc"
 BSC_RPC_URL = os.getenv("BSC_RPC_URL", "https://bsc-dataseed.bnbchain.org")
 AGENT_WALLET = "0xA935c0bE3b42385B6Cf7059979c7902AD4929B9B"
 SLIPPAGE_PCT = _env_float("SLIPPAGE_PCT", 1.0)          # twak default; max 50
+# TWAK's swap execution endpoint intermittently NETWORK_ERRORs ('fetch failed') —
+# especially on sells. Those failures never land on-chain, so retrying is safe. Total
+# attempts per swap for transient transport errors (reverts are never retried).
+SWAP_MAX_ATTEMPTS = int(_env_float("SWAP_MAX_ATTEMPTS", 4))
 MAX_PRICE_IMPACT_PCT = _env_float("MAX_PRICE_IMPACT_PCT", 3.0)  # abort swap above this
 
 # --- Paper trading (forward simulation; no funds, no chain) ---

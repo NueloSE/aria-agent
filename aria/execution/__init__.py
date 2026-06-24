@@ -116,6 +116,13 @@ async def _swap(store: Store, cycle_id: str, kind: str,
                         from_amount=amount)
         return ExecutionResult("failed", f"quote gate: {reason}")
 
+    # TWAK's swap EXECUTION endpoint intermittently returns NETWORK_ERROR ('fetch
+    # failed') — confirmed via probe: the SELL quote succeeds but execution flakes. A
+    # 'fetch failed' means the request never completed, so the swap did NOT land on
+    # chain — retrying is safe (no double-spend). Retry transport errors several times
+    # with a short backoff to push the swap through; a revert/validation error (the tx
+    # actually reached chain and failed) is NOT retried — recompute next cycle.
+    import asyncio as _asyncio
     attempts = 0
     while True:
         attempts += 1
@@ -125,14 +132,20 @@ async def _swap(store: Store, cycle_id: str, kind: str,
             )
             break
         except TwakError as exc:
-            if attempts >= 2:  # max ONE retry
+            msg = str(exc).lower()
+            transient = ("fetch failed" in msg or "network_error" in msg
+                         or "timeout" in msg or "econn" in msg or "503" in msg or "502" in msg)
+            if not transient or attempts >= config.SWAP_MAX_ATTEMPTS:
                 from aria import alerts
-                await alerts.send(f"❌ swap FAILED after retry: {from_token}->{to_token} "
-                                  f"{amount}: {str(exc)[:200]}")
+                await alerts.send(f"❌ swap FAILED after {attempts} attempts: "
+                                  f"{from_token}->{to_token} {amount}: {str(exc)[:200]}")
                 store.log_trade(cycle_id, kind, from_token, to_token,
                                 status="failed", from_amount=amount)
-                return ExecutionResult("failed", f"swap error after retry: {exc}")
-            log.warning("swap attempt %d failed, retrying once: %s", attempts, exc)
+                return ExecutionResult("failed", f"swap error after {attempts} attempts: {exc}")
+            backoff = min(2.0 * attempts, 8.0)
+            log.warning("swap attempt %d failed (transient: %s) — retrying in %.0fs",
+                        attempts, str(exc)[:80], backoff)
+            await _asyncio.sleep(backoff)
 
     detail: dict[str, Any] = result if isinstance(result, dict) else {"raw": str(result)}
     # Swap result shape: {success, txHash, summary:"X TOK -> Y TOK", provider, explorer}
