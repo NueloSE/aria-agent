@@ -66,16 +66,26 @@ async def main() -> None:
     except Exception as exc:  # noqa: BLE001
         print(f"check_allowance error: {exc}")
 
-    if input("\nType YES to EXECUTE the real sell and dump the raw swap result: ").strip() != "YES":
-        sys.exit("aborted (quote-only).")
+    # Confirmation via CLI arg (stdin input() is unreliable when not a TTY):
+    #   probe_sell.py DOGE EXECUTE   -> runs the real sell
+    #   probe_sell.py DOGE           -> quote-only
+    if len(sys.argv) < 3 or sys.argv[2].upper() != "EXECUTE":
+        print("\n(quote-only — pass EXECUTE as the 2nd arg to run the real sell:")
+        print(f"   .venv/bin/python scripts/probe_sell.py {SYM} EXECUTE )")
+        await twak.aclose()
+        return
 
-    # 4) Execute the swap — dump the FULL raw result.
-    print("\n=== swap (SELL) RAW RESULT ===")
-    r = await twak.call("swap", {
-        "fromChain": config.CHAIN, "toChain": config.CHAIN,
-        "fromToken": _token_ref(SYM), "toToken": USDT,
-        "amount": str(amount), "slippage": str(config.SLIPPAGE_PCT)}, timeout=300)
-    print(json.dumps(r, indent=2) if isinstance(r, (dict, list)) else repr(r))
+    # 4) Execute via the REAL production _swap (includes the new retry-on-NETWORK_ERROR).
+    print("\n=== executing SELL via production _swap (with retry) ===")
+    from aria.execution import _swap
+    from aria.state.db import Store
+    store = Store(config.DB_PATH)
+    res = await _swap(store, "probe-sell", "strategy", SYM, "USDT", amount)
+    print(f"\nRESULT: status={res.status}  detail={res.detail}")
+    if res.status == "executed":
+        print("✅ SELL LANDED — retry works, sells are viable.")
+    else:
+        print("❌ sell still failed — paste this whole output to Claude.")
 
     await twak.aclose()
 
