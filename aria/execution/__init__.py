@@ -438,6 +438,20 @@ async def reconcile_portfolio(store: Store,
         sl = lp.get("stop_loss_pct")
         tp = lp.get("target_pct")
         cost_basis = float(lp["cost_basis"]) if lp.get("cost_basis") else None
+        # Self-heal a corrupt cost basis. An on-chain value < 10% of cost (>90% "loss")
+        # is impossible for a blue chip in normal time — it means a bad cost_basis (old
+        # symbol-bug era) or a flaky get_balance (e.g. SHIB's NETWORK_ERROR reading ~0).
+        # Reset the basis to the current value (0% gain) so we don't stop-sell it forever.
+        if cost_basis and usd < 0.10 * cost_basis:
+            log.warning("reconcile: %s value $%.4f vs cost $%.2f implausible — resetting "
+                        "cost basis (corrupt/flaky data)", sym, usd, cost_basis)
+            cost_basis = usd
+            try:
+                rec = _json.loads(store.get_state(f"live_pos:{sym}") or "{}")
+                rec["cost_basis"] = usd
+                store.set_state(f"live_pos:{sym}", _json.dumps(rec))
+            except Exception:  # noqa: BLE001
+                pass
         positions.append(Position(
             token_symbol=sym, amount=amount, entry_price_usd=entry or price,
             opened_at=opened_at,
