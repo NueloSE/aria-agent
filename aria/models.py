@@ -82,8 +82,16 @@ class Position(BaseModel):
     target_pct: Optional[float] = None     # take-profit target
     peak_gain_pct: float = 0.0             # high-water mark of unrealized gain (for trailing)
     opened_at: datetime
+    # Value-based PnL (live mode): cost basis (USDT spent) and current on-chain value
+    # (totalInFiat). When both are set, gain is computed from these — fresh from chain,
+    # decimals-free, immune to the flaky per-token CMC price feed that froze SHIB/BTT.
+    cost_basis_usd: Optional[float] = None
+    current_value_usd: Optional[float] = None
 
     def gain_pct(self, price: float) -> float:
+        # Prefer the value-based gain (on-chain, always fresh) when available.
+        if self.cost_basis_usd and self.current_value_usd is not None and self.cost_basis_usd > 0:
+            return (self.current_value_usd / self.cost_basis_usd - 1.0) * 100.0
         if self.entry_price_usd <= 0:
             return 0.0
         return (price / self.entry_price_usd - 1.0) * 100.0

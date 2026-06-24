@@ -194,11 +194,13 @@ async def _swap(store: Store, cycle_id: str, kind: str,
                     total_amt = prev["amount"] + out_amount
                     avg_price = ((prev["amount"] * prev["entry_price"]) + (out_amount * entry_price)) / total_amt if total_amt else entry_price
                     rec = {"amount": total_amt, "entry_price": avg_price,
+                           "cost_basis": float(prev.get("cost_basis") or 0.0) + in_amount,  # USD spent, accumulated
                            "stop_loss_pct": stop_loss_pct if stop_loss_pct is not None else prev.get("stop_loss_pct"),
                            "target_pct": target_pct if target_pct is not None else prev.get("target_pct"),
                            "opened_at": prev.get("opened_at") or now_iso}  # keep original open time
                 else:
                     rec = {"amount": out_amount, "entry_price": entry_price,
+                           "cost_basis": in_amount,  # USD spent on this position
                            "stop_loss_pct": stop_loss_pct, "target_pct": target_pct,
                            "opened_at": now_iso}
                 store.set_state(f"live_pos:{to_token}", _json.dumps(rec))
@@ -419,13 +421,14 @@ async def reconcile_portfolio(store: Store,
         if lp is None:
             # Adopt the orphan: persist a live_pos so it's tracked AND gets a real
             # opened_at — otherwise the time-stop never fires and it's stuck forever.
+            # cost_basis = current value -> the adopted position starts at 0% gain.
             now_iso = datetime.now(timezone.utc).isoformat()
             store.set_state(f"live_pos:{sym}", _json.dumps({
-                "amount": amount, "entry_price": price,
+                "amount": amount, "entry_price": price, "cost_basis": usd,
                 "stop_loss_pct": config.MR_STOP_LOSS_PCT,
                 "target_pct": config.MR_TARGET_PCT, "opened_at": now_iso}))
             log.info("reconcile: adopted orphan holding %s ($%.2f) into tracking", sym, usd)
-            lp = {"opened_at": now_iso}
+            lp = {"opened_at": now_iso, "cost_basis": usd}
             entry = price
         opened = lp.get("opened_at")
         try:
@@ -434,11 +437,14 @@ async def reconcile_portfolio(store: Store,
             opened_at = datetime.now(timezone.utc)
         sl = lp.get("stop_loss_pct")
         tp = lp.get("target_pct")
+        cost_basis = float(lp["cost_basis"]) if lp.get("cost_basis") else None
         positions.append(Position(
             token_symbol=sym, amount=amount, entry_price_usd=entry or price,
             opened_at=opened_at,
             stop_loss_pct=sl if sl is not None else config.MR_STOP_LOSS_PCT,
             target_pct=tp if tp is not None else config.MR_TARGET_PCT,
+            cost_basis_usd=cost_basis,        # USDT spent (fresh, decimals-free PnL basis)
+            current_value_usd=usd,            # on-chain totalInFiat — always fresh
         ))
 
     # Guard against a transient query failure reading the portfolio as near-zero. If the

@@ -103,13 +103,23 @@ def _live_positions(s: Store, prices: dict) -> list[dict]:
         if amount <= 0:
             continue
         px = prices.get(sym)
-        value = (px * amount) if px else None
-        gain = (px / entry - 1.0) * 100.0 if (px and entry) else None
+        # Prefer the value basis (cost spent vs current on-chain value) — fresh and
+        # immune to the stale CMC feed. Fall back to price-based for legacy records.
+        cost = pos.get("cost_basis")
+        cur_val = s.get_state(f"onchain_usd:{sym}")  # last on-chain value cached by reconcile
+        cur_val = float(cur_val) if cur_val else ((px * amount) if px else None)
+        if cost and cur_val is not None:
+            value = cur_val
+            gain = (cur_val / float(cost) - 1.0) * 100.0
+            unreal = cur_val - float(cost)
+        else:
+            value = (px * amount) if px else None
+            gain = (px / entry - 1.0) * 100.0 if (px and entry) else None
+            unreal = (value - entry * amount) if (value is not None) else None
         out.append({
             "symbol": sym, "amount": amount, "entry_price_usd": entry,
             "current_price_usd": px, "value_usd": value,
-            "unrealized_pct": gain,
-            "unrealized_usd": (value - entry * amount) if (value is not None) else None,
+            "unrealized_pct": gain, "unrealized_usd": unreal,
             "target_pct": pos.get("target_pct"), "stop_loss_pct": pos.get("stop_loss_pct"),
             "peak_gain_pct": None,
             "opened_at": pos.get("opened_at"),  # real ISO open time (was None -> 1970/"20627d ago")

@@ -42,9 +42,13 @@ async def manage_open_positions(portfolio: PortfolioState, prices: dict[str, flo
     notes: list[str] = []
     for pos in portfolio.positions:
         price = prices.get(pos.token_symbol)
-        if price is None or price <= 0:
+        # A position with a value-based PnL basis (cost + on-chain value) can be
+        # evaluated WITHOUT a fresh CMC price — that's the whole point: it no longer
+        # gets skipped just because the flaky feed didn't price this token this cycle.
+        has_value_basis = bool(pos.cost_basis_usd and pos.current_value_usd is not None)
+        if (price is None or price <= 0) and not has_value_basis:
             continue
-        gain = pos.gain_pct(price)
+        gain = pos.gain_pct(price if price else 0.0)
         peak = max(pos.peak_gain_pct, gain)
         if peak > pos.peak_gain_pct and config.EXECUTION_MODE == "paper":
             store.paper_position_peak(pos.token_symbol, peak)
